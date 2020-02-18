@@ -1,0 +1,8 @@
+[package]
+
+name = "hello_world"
+version = "0.0.1"
+authors = ["Sebastian Kaiser <sebastian.kaiser@crvsh.io>"]
+
+[dependencies]
+clap = { git = "https://github.com/clap-rs/clap/", features = ["yaml"] }
