@@ -5,6 +5,11 @@ As we publish a couple of libraries to multiple repositories under crvshlab, we 
 
 This repository contains some scripts that may be useful for these kind of tasks.
 
+# Usage
+
+Run via
+`GITHUB_CLIENT_ID=xxx GITHUB_CLIENT_SECRET=xxx cargo run bardo repo`
+to generate authorization url.
 
 # Discussion
 
