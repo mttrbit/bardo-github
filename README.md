@@ -1,4 +1,4 @@
-# Backoffice Github Repo Automation
+# Github Repo Automation
 > A set of tools to automate multiple GitHub repository management.
 
 As we publish a couple of libraries to multiple repositories under crvshlab, we need a set of small tools to perform management of those repositories, such as creating new repositories, updating continuous integration setup, updating dependencies, and so on.
