@@ -1,5 +1,10 @@
 extern crate clap;
+extern crate oauth2;
+
 use clap::App;
+
+pub mod github;
+use github::github_authorize;
 
 fn main() {
     // This example shows how to create an application with several arguments using usage strings, which can be
@@ -38,6 +43,10 @@ fn main() {
         .arg("<output> 'Sets an optional output file'")
         .arg("-d... 'Turn debugging information on'")
         .subcommand(
+            App::new("repo")
+                .about("provides github automations")
+        )
+        .subcommand(
             App::new("test")
                 .about("does testing things")
                 .arg("-l, --list 'lists test values'"),
@@ -72,6 +81,11 @@ fn main() {
         } else {
             println!("Not printing testing lists...");
         }
+    }
+
+
+    if let Some(ref matches) = matches.subcommand_matches("repo") {
+       github_authorize();
     }
 
     // Continued program logic goes here...

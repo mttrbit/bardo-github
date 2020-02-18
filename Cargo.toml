@@ -1,8 +1,9 @@
 [package]
 
-name = "hello_world"
+name = "bardo"
 version = "0.0.1"
 authors = ["Sebastian Kaiser <sebastian.kaiser@crvsh.io>"]
 
 [dependencies]
 clap = { git = "https://github.com/clap-rs/clap/", features = ["yaml"] }
+oauth2 = { version = "3.0.0-alpha.9" }
