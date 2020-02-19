@@ -1,6 +1,6 @@
 [package]
 
-name = "bardo"
+name = "repo"
 version = "0.0.1"
 authors = ["Sebastian Kaiser <sebastian.kaiser@crvsh.io>"]
 

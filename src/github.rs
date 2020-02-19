@@ -8,7 +8,7 @@ use oauth2::{
 use std::env;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
-// use url::Url;
+use oauth2::url::Url;
 
 pub fn github_authorize() {
     let github_client_id = ClientId::new(
@@ -39,4 +39,59 @@ pub fn github_authorize() {
         "Open this URL in your browser:\n{}\n",
         authorize_url.to_string()
     );
+
+    let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+    for stream in listener.incoming() {
+        if let Ok(mut stream) = stream {
+            let code;
+            let state;
+            {
+                let mut reader = BufReader::new(&stream);
+                let mut request_line = String::new();
+                reader.read_line(&mut request_line).unwrap();
+
+                let redirect_url = request_line.split_whitespace().nth(1).unwrap();
+                let url = Url::parse(&("http://localhost".to_string() + redirect_url)).unwrap();
+
+                let code_pair = url
+                    .query_pairs()
+                    .find(|pair| {
+                        let &(ref key, _) = pair;
+                        key == "code"
+                    })
+                    .unwrap();
+
+                let (_, value) = code_pair;
+                code = AuthorizationCode::new(value.into_owned());
+
+                let state_pair = url
+                    .query_pairs()
+                    .find(|pair| {
+                        let &(ref key, _) = pair;
+                        key == "state"
+                    })
+                    .unwrap();
+                let (_, value) = state_pair;
+                state = CsrfToken::new(value.into_owned());
+            }
+
+            let message = "Go back to your terminal.";
+            let response = format!(
+                "HTTP/1.1 200 OK\r\ncontent-length: {}\r\n\r\n{}",
+                message.len(),
+                message
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+
+            println!("Github returned the following code:\n{}\n", code.secret());
+            println!(
+                "Github returned the following state:\n{} (expected `{}`)\n",
+                state.secret(),
+                csrf_state.secret()
+            );
+
+            let token_res = client.exchange_code(code).request(http_client);
+            println!("Github returned the following token:\n{:?}\n", token_res);
+        }
+    }
 }
