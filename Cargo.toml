@@ -5,5 +5,11 @@ version = "0.0.1"
 authors = ["Sebastian Kaiser <sebastian.kaiser@crvsh.io>"]
 
 [dependencies]
+github-gql-rs = "0.0.1"
 clap = { git = "https://github.com/clap-rs/clap/", features = ["yaml"] }
 oauth2 = { version = "3.0.0-alpha.9" }
+
+[dependencies.github-rs]
+version = "0.7.0"
+default-features = false
+features = ["rust-native-tls"]

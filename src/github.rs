@@ -92,6 +92,22 @@ pub fn github_authorize() {
 
             let token_res = client.exchange_code(code).request(http_client);
             println!("Github returned the following token:\n{:?}\n", token_res);
+
+            if let Ok(token) = token_res {
+                let scopes = if let Some(scopes_vec) = token.scopes() {
+                    scopes_vec
+                        .iter()
+                        .map(|comma_separated| comma_separated.split(','))
+                        .flatten()
+                        .collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                };
+
+                println!("Github returned the following scopes:\n{:?}\n", scopes);
+            }
+            
+            break;
         }
     }
 }
