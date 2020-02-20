@@ -5,7 +5,8 @@ version = "0.0.1"
 authors = ["Sebastian Kaiser <sebastian.kaiser@crvsh.io>"]
 
 [dependencies]
-github-gql-rs = "0.0.1"
+# github-gql-rs = "0.0.1"
+hyper = { version = "0.13.2" }
 clap = { git = "https://github.com/clap-rs/clap/", features = ["yaml"] }
 oauth2 = { version = "3.0.0-alpha.9" }
 
