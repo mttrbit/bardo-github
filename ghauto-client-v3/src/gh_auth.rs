@@ -106,7 +106,7 @@ pub fn github_authorize() {
 
                 println!("Github returned the following scopes:\n{:?}\n", scopes);
             }
-            
+
             break;
         }
     }

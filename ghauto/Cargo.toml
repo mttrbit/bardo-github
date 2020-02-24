@@ -1,0 +1,7 @@
+[package]
+name = "ghauto"
+version = "0.0.1"
+authors = [ "Sebastian Kaiser <sk4is3r@gmail.com>" ]
+
+[dependencies]
+ghauto-console = { path = "../ghauto-console", version = "0.0.1" }
