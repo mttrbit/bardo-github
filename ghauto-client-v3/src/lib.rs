@@ -15,7 +15,9 @@ extern crate oauth2;
 extern crate tokio_core;
 extern crate hyper;
 
-#[macro_use] mod macros;
+#[macro_use]
+mod macros;
+mod util;
 
 pub mod gh_auth;
 pub mod client;

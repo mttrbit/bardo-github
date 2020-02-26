@@ -21,6 +21,7 @@ use serde::Serialize;
 use serde_json;
 
 use crate::errors::*;
+use crate::util::url_join;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -85,6 +86,14 @@ impl Github {
 impl<'g> GetQueryBuilder<'g> {
     func_client!(custom_endpoint, CustomQuery, endpoint_str);
 }
+
+from!(
+    @GetQueryBuilder => "GET"
+);
+
+from!(
+    @GetQueryBuilder => CustomQuery
+);
 
 impl<'a> CustomQuery<'a> {
     pub fn set_header(
