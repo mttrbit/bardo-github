@@ -175,23 +175,24 @@ macro_rules! exec {
             {
                 let mut core_ref = self.core.try_borrow_mut()?;
                 let client = self.client;
-                let work = client.request(self.request?.into_inner()).and_then(|res| {
-                    let header = res.headers().clone();
-                    let status = res.status();
-                    res.into_body()
-                       .fold(Vec::new(), |mut v, chunk| {
-                           v.extend(&chunk[..]);
-                           ok::<_, hyper::Error>(v)
-                       })
-                       .map(move |chunks|{
-                           if chunks.is_empty() {
-                               Ok((header, status, None))
-                           } else {
-                               Ok((header, status, Some(serde_json::from_slice(&chunks)?)))
-                           }
-                       })
-                });
-                core_ref.run(work)?
+                let resp_fut = async {
+                    let resp = client.request(self.request.into_inner()).await?;
+                    let header = resp.headers().clone();
+                    let status = resp.status();
+                    let bytes = hyper::body::to_bytes(resp.into_body()).await;
+                    bytes.and_then(|mut b| {
+                        let body = String::from_utf8(b.to_vec());
+                        body.map_err(|err| ok::<_, hyper::Error>(err))
+                            .map(|data| {
+                                if data.is_empty() {
+                                    Ok((header, status, None))
+                                } else {
+                                    Ok((header, status, Some(serde_json::from_slice(&data)?)))
+                                }
+                            });
+                    })
+                };
+                core_ref.run(futures::try_join!(resp_fut))?
             }
         }
     };

@@ -2,6 +2,7 @@
 name = "ghauto-console"
 version = "0.0.1"
 authors = [ "Sebastian Kaiser <sk4is3r@gmail.com>" ]
+edition = "2018"
 
 [dependencies]
 clap = { git = "https://github.com/clap-rs/clap/", features = ["yaml"] }
