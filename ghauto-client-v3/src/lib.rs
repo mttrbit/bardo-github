@@ -6,22 +6,21 @@
         unused_qualifications)]
 
 #[macro_use]
+extern crate serde_derive;
+#[macro_use]
 extern crate error_chain;
 
+extern crate bytes;
+extern crate futures;
+extern crate http;
+extern crate hyper;
+extern crate oauth2;
 extern crate serde;
 extern crate serde_json;
-extern crate futures;
-extern crate oauth2;
 extern crate tokio;
-extern crate hyper;
-extern crate http;
 
-#[macro_use]
-mod macros;
-mod util;
-
-pub mod gh_auth;
 pub mod client;
 pub mod errors;
+pub mod gh_auth;
 
 pub use hyper::{HeaderMap, StatusCode};
