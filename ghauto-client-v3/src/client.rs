@@ -1,8 +1,6 @@
 // Tokio/Future Imports
 use futures::future::ok;
 use futures::{Future, Stream};
-use tokio_core::reactor::Core;
-
 use hyper::header::{HeaderName, HeaderValue, IF_NONE_MATCH};
 use hyper::StatusCode;
 use hyper::{self, Body, HeaderMap};
@@ -28,7 +26,6 @@ use std::rc::Rc;
 
 pub struct Github {
     token: String,
-    core: Rc<RefCell<Core>>,
     client: Rc<Client<HttpsConnector>>,
 }
 
@@ -36,7 +33,6 @@ impl Clone for Github {
     fn clone(&self) -> Self {
         Self {
             token: self.token.clone(),
-            core: Rc::clone(&self.core),
             client: Rc::clone(&self.client),
         }
     }
@@ -57,20 +53,14 @@ impl Github {
     where
         T: ToString,
     {
-        let core = Core::new()?;
         #[cfg(feature = "rustls")]
         let client = Client::builder().build(HttpsConnector::new());
         #[cfg(feature = "rust-native-tls")]
         let client = Client::builder().build(HttpsConnector::new());
         Ok(Self {
             token: token.to_string(),
-            core: Rc::new(RefCell::new(core)),
             client: Rc::new(client),
         })
-    }
-
-    pub fn get_core(&self) -> &Rc<RefCell<Core>> {
-        &self.core
     }
 
     /// Get the currently set Authorization Token

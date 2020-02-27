@@ -10,7 +10,6 @@ macro_rules! from {
                 fn from(f: $f<'g>) -> Self {
                     Self {
                         request: f.request,
-                        core: f.core,
                         client: f.client,
                         parameter: None,
                     }
@@ -48,14 +47,12 @@ macro_rules! from {
 
                         Self {
                             request: f.request,
-                            core: f.core,
                             client: f.client,
                             parameter: None,
                         }
                     } else {
                         Self {
                             request: f.request,
-                            core: f.core,
                             client: f.client,
                             parameter: None,
                         }
@@ -85,7 +82,6 @@ macro_rules! from {
 
                     Self {
                         request: f.request,
-                        core: f.core,
                         client: f.client,
                         parameter: None,
                     }
@@ -94,7 +90,6 @@ macro_rules! from {
 
                     Self {
                         request: f.request,
-                        core: f.core,
                         client: f.client,
                         parameter: None,
                     }
@@ -129,7 +124,6 @@ macro_rules! from {
                         }
                         Self {
                             request: Ok(RefCell::new(req)),
-                            core: &gh.core,
                             client: &gh.client,
                             parameter: None,
                         }
@@ -137,7 +131,6 @@ macro_rules! from {
                     Err(err) => {
                         Self {
                             request: Err(err),
-                            core: &gh.core,
                             client: &gh.client,
                             parameter: None,
                         }
@@ -158,7 +151,6 @@ macro_rules! new_type {
         $(
             pub struct $i<'g> {
                 pub(crate) request: Result<RefCell<Request<Body>>>,
-                pub(crate) core: &'g Rc<RefCell<Core>>,
                 pub(crate) client: &'g Rc<Client<HttpsConnector>>,
                 pub(crate) parameter: Option<String>,
             }
@@ -166,33 +158,36 @@ macro_rules! new_type {
     );
 }
 
+
+/// Used to generate an execute function for a terminal type in a query
+/// pipeline. If passed a type it creates the impl as well as it needs
+/// no extra functions.
 macro_rules! exec {
     ($t: ident) => {
         impl<'a> Executor for $t<'a> {
+            /// Execute the query by sending the built up request to GitHub.
+            /// The value returned is either an error or the Status Code and
+            /// Json after it has been deserialized. Please take a look at
+            /// the GitHub documentation to see what value you should receive
+            /// back for good or bad requests.
             fn execute<T>(self) -> Result<(HeaderMap, StatusCode, Option<T>)>
             where
                 T: DeserializeOwned,
             {
-                let mut core_ref = self.core.try_borrow_mut()?;
                 let client = self.client;
-                let resp_fut = async {
-                    let resp = client.request(self.request.into_inner()).await?;
-                    let header = resp.headers().clone();
-                    let status = resp.status();
-                    let bytes = hyper::body::to_bytes(resp.into_body()).await;
-                    bytes.and_then(|mut b| {
-                        let body = String::from_utf8(b.to_vec());
-                        body.map_err(|err| ok::<_, hyper::Error>(err))
-                            .map(|data| {
-                                if data.is_empty() {
-                                    Ok((header, status, None))
-                                } else {
-                                    Ok((header, status, Some(serde_json::from_slice(&data)?)))
-                                }
-                            });
-                    })
-                };
-                core_ref.run(futures::try_join!(resp_fut))?
+                let request = self.request?.into_inner();
+                    let join = tokio::task::block_in_place(|| async {
+                        let response = client.request(request).await;
+                        response.and_then(|res| {
+                            let header = res.headers().clone();
+                            let status = res.status();
+                            Ok((header, status, None))
+                        });
+                        //let str = String::from_utf8(bytes.to_vec());
+                    });
+
+
+                join
             }
         }
     };

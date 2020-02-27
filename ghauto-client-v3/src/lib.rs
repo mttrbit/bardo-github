@@ -12,8 +12,9 @@ extern crate serde;
 extern crate serde_json;
 extern crate futures;
 extern crate oauth2;
-extern crate tokio_core;
+extern crate tokio;
 extern crate hyper;
+extern crate http;
 
 #[macro_use]
 mod macros;
