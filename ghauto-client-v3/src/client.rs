@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use hyper::{Client, Body, HeaderMap};
-use hyper::StatusCode;
 use hyper::header::{HeaderName, HeaderValue, IF_NONE_MATCH};
+use hyper::StatusCode;
+use hyper::{Body, Client, HeaderMap};
 
 #[cfg(feature = "rustls")]
 type HttpsConnector = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
@@ -10,9 +10,9 @@ use hyper_tls;
 #[cfg(feature = "rust-native-tls")]
 type HttpsConnector = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
 
-use serde::de::DeserializeOwned;
-use bytes::buf::ext::BufExt;
 use crate::bytes::Buf;
+use bytes::buf::ext::BufExt;
+use serde::de::DeserializeOwned;
 
 // pub struct Github {
 //     token: String,
@@ -77,6 +77,7 @@ struct User {
 //         }
 //     }
 // }
+//
 
 // A simple type alias so as to DRY.
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -102,15 +103,13 @@ macro_rules! exec {
                 println!("request finished-- returning response");
                 println!("Response: {}", status);
 
-
                 let res = serde_json::from_reader(body.reader())?;
 
                 Ok((headers, status, res))
             }
         }
-    }
+    };
 }
-
 
 struct Svc;
 
