@@ -21,6 +21,7 @@ serde_json = "1.0.48"
 oauth2 = { version = "3.0.0-alpha.9" }
 async-trait = "0.1.24"
 serde_derive = "1.0.90"
+http-types = {version = "1.0.1", features = ["hyperium_http"]}
 
 [features]
 default = ["rustls"]

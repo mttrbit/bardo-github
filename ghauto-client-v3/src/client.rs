@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use hyper::header::{HeaderName, HeaderValue, IF_NONE_MATCH};
-use hyper::StatusCode;
 use hyper::{Body, Client, HeaderMap};
 
 #[cfg(feature = "rustls")]
@@ -13,6 +12,10 @@ type HttpsConnector = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
 use crate::bytes::Buf;
 use bytes::buf::ext::BufExt;
 use serde::de::DeserializeOwned;
+
+use http_types::Status;
+use http_types::{Error, StatusCode};
+use std::io;
 
 // pub struct Github {
 //     token: String,
@@ -80,7 +83,7 @@ struct User {
 //
 
 // A simple type alias so as to DRY.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
 
 macro_rules! exec {
     ($t: ident) => {
@@ -90,14 +93,19 @@ macro_rules! exec {
             where
                 T: DeserializeOwned,
             {
-                let url_str = "http://jsonplaceholder.typicode.com/usersr2";
+                let url_str = "http://jsonplaceholder.typicode.com/users2";
                 let url = url_str.parse().expect("Failed to parse URL");
                 let client = Client::builder().build::<_, Body>(HttpsConnector::new());
                 let res = client.get(url).await?;
+
                 let headers = res.headers().clone();
-                let status = res.status();
-                let bytes = res.into_bytes();
-                println!("body: {:?}", res.body());
+                let status: StatusCode = StatusCode::from(res.status());
+                // let bytes = res.into_bytes();
+                // println!("body: {:?}", res.body());
+                if status.is_client_error() || status.is_server_error() {
+                    let err = io::Error::new(io::ErrorKind::Other, "Ohh no");
+                    return Err(Error::new(status, err))?;
+                }
 
                 let body = hyper::body::aggregate(res).await?;
                 println!("request finished-- returning response");
@@ -125,11 +133,18 @@ exec!(Svc);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use http_types::{Error, StatusCode};
 
     #[tokio::test]
     async fn set_and_load_token() {
         let response = Svc::execute::<Vec<User>>().await;
         // let (_, _, users) = response.ok();
-        println!("data: {:#?}", response.ok());
+
+        let u = match response {
+            Ok(u) => println!("success: {:#?}", u),
+            Err(e) => {
+                println!("error: {:#?}", e);
+            }
+        };
     }
 }
