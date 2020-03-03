@@ -19,6 +19,10 @@ extern crate serde;
 extern crate serde_json;
 extern crate tokio;
 
+#[macro_use]
+mod macros;
+mod util;
+
 pub mod client;
 pub mod errors;
 pub mod gh_auth;
