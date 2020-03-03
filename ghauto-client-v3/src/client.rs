@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use hyper::header::{HeaderName, HeaderValue, IF_NONE_MATCH};
-use hyper::{Response, Request, Body, Client, HeaderMap, StatusCode};
+use hyper::{Body, Client, HeaderMap, Request, Response, StatusCode};
 
 #[cfg(feature = "rustls")]
 type HttpsConnector = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
@@ -43,9 +43,16 @@ impl Clone for Github {
 
 new_type!(GetQueryBuilder);
 new_type!(CustomQuery);
+exec!(CustomQuery);
+
+pub trait Executor {
+    fn execute<T>(&self) -> Result<(HeaderMap, StatusCode, Option<T>)>
+    where
+        T: DeserializeOwned;
+}
 
 impl Github {
-    pub fn new<T>(token: T) -> Result<Self>
+    pub fn new<T>(token: T) -> Self
     where
         T: ToString,
     {
@@ -53,10 +60,10 @@ impl Github {
         let client = Client::builder().build(HttpsConnector::new());
         #[cfg(feature = "rust-native-tls")]
         let client = Client::builder().build(HttpsConnector::new()?);
-        Ok(Self {
+        Self {
             token: token.to_string(),
             client: Rc::new(client),
-        })
+        }
     }
 
     /// Get the currently set Authorization Token
@@ -80,27 +87,19 @@ impl Github {
 }
 
 impl<'g> GetQueryBuilder<'g> {
-     func_client!(custom_endpoint, CustomQuery, endpoint_str);
+    func_client!(custom_endpoint, CustomQuery, endpoint_str);
 }
 
-
-#[async_trait]
-pub trait Executor {
-    async fn execute<T>() -> Result<(HeaderMap, StatusCode, Option<T>)>
-    where
-        T: DeserializeOwned;
-}
-
-//exec!(Github);
-
-exec!(CustomQuery);
+// exec!(Github);
 
 from!(
-    @GetQueryBuilder => "GET"
+    @GetQueryBuilder
+        => "GET"
 );
 
 from!(
-    @GetQueryBuilder => CustomQuery
+    @GetQueryBuilder
+        => CustomQuery
 );
 
 impl<'a> CustomQuery<'a> {
@@ -128,16 +127,33 @@ impl<'a> CustomQuery<'a> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn set_and_load_token() {
-        let response = CustomQuery::execute::<Vec<User>>().await;
+    fn auth_token() -> Result<String> {
+        Ok("test_token".to_string())
+    }
+
+    fn setup_github_connection() -> Github {
+        Github::new("test_token".to_string())
+    }
+
+    #[test]
+    fn set_and_load_token() {
+        let g = setup_github_connection()
+            .get()
+            .custom_endpoint("abcd")
+            //.execute::<serde_json::Value>()
+            .execute::<Vec<User>>()
+            .unwrap();
+        println!("response {:#?}", g);
+        //.expect("Connection failed");
+
+        // let response = CustomQuery::execute::<Vec<User>>().await;
         // let (_, _, users) = response.ok();
 
-        let u = match response {
-            Ok(u) => println!("success: {:#?}", u),
-            Err(e) => {
-                println!("error: {:#?}", e);
-            },
-        };
+        // let u = match g {
+        //     Ok(u) => println!("success: {:#?}", u),
+        //     Err(e) => {
+        //         println!("error: {:#?}", e);
+        //     }
+        // };
     }
 }

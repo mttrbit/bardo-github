@@ -10,11 +10,13 @@ extern crate serde_derive;
 #[macro_use]
 extern crate error_chain;
 
+extern crate async_std;
 extern crate bytes;
 extern crate futures;
 extern crate http;
 extern crate hyper;
 extern crate oauth2;
+extern crate reqwest;
 extern crate serde;
 extern crate serde_json;
 extern crate tokio;
