@@ -116,7 +116,18 @@ macro_rules! from {
         $(
         impl <'g> From<&'g Github> for $t<'g> {
             fn from(gh: &'g Github) -> Self {
-                let req = http::Request::builder().body(hyper::Body::empty()).unwrap();
+                let method = match $p {
+                    "GET" => Method::GET,
+                    "POST" => Method::POST,
+                    "PUT" => Method::PUT,
+                    "DELETE" => Method::DELETE,
+                    "OPTIONS" => Method::OPTIONS,
+                    _ => Method::GET,
+                };
+
+                let url_str = "http://jsonplaceholder.typicode.com/users";
+                let url = Url::parse(url_str).unwrap();
+                let req = Request::new(method, url);
                 Self {
                     request: Ok(RefCell::new(req)),
                     client: &gh.client,
@@ -170,8 +181,8 @@ macro_rules! new_type {
     ($($i: ident)*) => (
         $(
         pub struct $i<'g> {
-            pub(crate) request: Result<RefCell<Request<Body>>>,
-            pub(crate) client: &'g Rc<Client<HttpsConnector>>,
+            pub(crate) request: Result<RefCell<Request>>,
+            pub(crate) client: &'g Rc<Client>,
             pub(crate) parameter: Option<String>,
         }
         )*
@@ -181,15 +192,13 @@ macro_rules! new_type {
 macro_rules! exec {
     ($t1:ident) => {
         impl<'a> Executor for $t1<'a> {
-            fn execute<T>(&self) -> Result<(HeaderMap, StatusCode, Option<T>)>
+            fn execute<T>(self) -> Result<(HeaderMap, StatusCode, Option<T>)>
             where
                 T: DeserializeOwned,
             {
-                let url_str = "http://jsonplaceholder.typicode.com/users";
-                // let url = url_str.parse().expect("Failed to parse URL");
-                // let client = &self.client;
-                //let res2 = client.get(url);
-                let res = reqwest::blocking::get(url_str)?;
+                let req = self.request?.into_inner();
+                println!("{:?}", req);
+                let res = self.client.execute(req)?;
                 let headers = res.headers().clone();
                 let status: StatusCode = StatusCode::from(res.status());
                 match res.json() {
@@ -223,10 +232,10 @@ macro_rules! impl_macro {
                     if self.request.is_ok() {
                         // We've checked that this works
                         let mut req = self.request.unwrap();
-                        let url = url_join(req.borrow().uri(), $e2);
+                        let url = url_join(req.borrow().url(), $e2);
                         match url {
                             Ok(u) => {
-                                *req.get_mut().uri_mut() = u;
+                                *req.get_mut().url_mut() = u;
                                 self.request = Ok(req);
                             },
                             Err(e) => {
@@ -266,10 +275,10 @@ macro_rules! func_client{
             if self.request.is_ok() {
                 // We've checked that this works
                 let mut req = self.request.unwrap();
-                let url = url_join(req.borrow().uri(), $e);
+                let url = url_join(req.borrow().url(), $e);
                 match url {
                     Ok(u) => {
-                        *req.get_mut().uri_mut() = u;
+                        *req.get_mut().url_mut() = u;
                         self.request = Ok(req);
                     },
                     Err(e) => {

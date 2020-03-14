@@ -1,14 +1,8 @@
-use async_trait::async_trait;
 use hyper::header::{HeaderName, HeaderValue, IF_NONE_MATCH};
-use hyper::{Body, Client, HeaderMap, Request, Response, StatusCode};
+use hyper::{Body, HeaderMap, Response, StatusCode};
 
-#[cfg(feature = "rustls")]
-type HttpsConnector = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
-#[cfg(feature = "rust-native-tls")]
-use hyper_tls;
-#[cfg(feature = "rust-native-tls")]
-type HttpsConnector = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
-
+use reqwest::blocking::{Client, Request};
+use reqwest::{Url, Method};
 // use crate::futures::TryFutureExt;
 use bytes::buf::ext::BufExt;
 use serde::de::DeserializeOwned;
@@ -29,7 +23,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync 
 
 struct Github {
     token: String,
-    client: Rc<Client<HttpsConnector>>,
+    client: Rc<Client>,
 }
 
 impl Clone for Github {
@@ -46,7 +40,7 @@ new_type!(CustomQuery);
 exec!(CustomQuery);
 
 pub trait Executor {
-    fn execute<T>(&self) -> Result<(HeaderMap, StatusCode, Option<T>)>
+    fn execute<T>(self) -> Result<(HeaderMap, StatusCode, Option<T>)>
     where
         T: DeserializeOwned;
 }
@@ -56,10 +50,7 @@ impl Github {
     where
         T: ToString,
     {
-        #[cfg(feature = "rustls")]
-        let client = Client::builder().build(HttpsConnector::new());
-        #[cfg(feature = "rust-native-tls")]
-        let client = Client::builder().build(HttpsConnector::new()?);
+        let client = Client::new();
         Self {
             token: token.to_string(),
             client: Rc::new(client),
@@ -139,7 +130,7 @@ mod tests {
     fn set_and_load_token() {
         let g = setup_github_connection()
             .get()
-            .custom_endpoint("abcd")
+            .custom_endpoint("users")
             //.execute::<serde_json::Value>()
             .execute::<Vec<User>>()
             .unwrap();

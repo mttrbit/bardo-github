@@ -9,26 +9,15 @@ edition = "2018"
 async-std = "1.5.0"
 bytes = "0.5.4"
 hyper = { version = "0.13.2" }
-hyper-rustls = { version = "0.19.1", optional = true }
-hyper-tls = { version = "0.4.1", optional = true }
-native-tls = { version = "0.2.3", optional = true }
 error-chain = "0.12.2"
 tokio = { version = "0.2.11", features = ["full"] }
-futures = "0.3.4"
-futures-channel = "0.3"
 http = "0.2.0"
 serde = "1.0.104"
 serde_json = "1.0.48"
 oauth2 = { version = "3.0.0-alpha.9" }
-async-trait = "0.1.24"
 serde_derive = "1.0.90"
-reqwest = { version = "0.10", features = ["blocking", "json"] }
+reqwest = { version = "0.10.4", features = ["blocking", "json", "rustls-tls"] }
 # http-types = {version = "1.0.1", features = ["hyperium_http"]}
-
-[features]
-default = ["rustls"]
-rustls = ["hyper-rustls"]
-rust-native-tls = ["native-tls", "hyper-tls"]
 
 [dev-dependencies]
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
