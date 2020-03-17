@@ -197,7 +197,6 @@ macro_rules! exec {
                 T: DeserializeOwned,
             {
                 let req = self.request?.into_inner();
-                println!("{:?}", req);
                 let res = self.client.execute(req)?;
                 let headers = res.headers().clone();
                 let status: StatusCode = StatusCode::from(res.status());
