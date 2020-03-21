@@ -125,48 +125,44 @@ macro_rules! from {
                     _ => Method::GET,
                 };
 
-                let url_str = "http://jsonplaceholder.typicode.com/users";
+                use hyper::header::{ ACCEPT, AUTHORIZATION, CONTENT_TYPE, USER_AGENT };
+                // let url_str = "http://jsonplaceholder.typicode.com/users";
+                let url_str = "https://api.github.com";
                 let url = Url::parse(url_str).unwrap();
-                let req = Request::new(method, url);
-                Self {
-                    request: Ok(RefCell::new(req)),
-                    client: &gh.client,
-                    parameter: None,
+                let request = Request::new(method, url);
+
+                let client = Client::new();
+
+                let res = client.execute(request.try_clone().unwrap()).and_then(|req| {
+                    println!("{:?}", req);
+                    let token = String::from("token ") + &gh.token;
+                    Ok((request, HeaderValue::from_str(&token).unwrap()))
+                });
+
+                match res {
+                    Ok((mut req, token)) => {
+                        {
+                            let headers = req.headers_mut();
+                            headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+                            headers.insert(USER_AGENT, HeaderValue::from_static("bardo-github"));
+                            headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.v3+json"));
+                            headers.insert(AUTHORIZATION, token);
+                        }
+                        Self {
+                            request: Ok(RefCell::new(req)),
+                            client: &gh.client,
+                            parameter: None,
+                        }
+                    }
+                    Err(err) => {
+                        Self {
+                            request: Err(Box::new(err)),
+                            client: &gh.client,
+                            parameter: None,
+                        }
+                    }
                 }
 
-                // use hyper::header::{ ACCEPT, AUTHORIZATION, CONTENT_TYPE, USER_AGENT };
-                // let res = Request::builder().method($p)
-                //     .uri("https://api.github.com")
-                //     .body(hyper::Body::empty())
-                //     .map_err(From::from)
-                //     .and_then(|req| {
-                //         let token = String::from("token ") + &gh.token;
-                //         HeaderValue::from_str(&token).map(|token| (req, token))
-                //             .map_err(From::from)
-                //     });
-                // match res {
-                //     Ok((mut req, token)) => {
-                //         {
-                //             let headers = req.headers_mut();
-                //             headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-                //             headers.insert(USER_AGENT, HeaderValue::from_static("github-rs"));
-                //             headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github.v3+json"));
-                //             headers.insert(AUTHORIZATION, token);
-                //         }
-                //         Self {
-                //             request: Ok(RefCell::new(req)),
-                //             client: &gh.client,
-                //             parameter: None,
-                //         }
-                //     }
-                //     Err(err) => {
-                //         Self {
-                //             request: Err(err),
-                //             client: &gh.client,
-                //             parameter: None,
-                //         }
-                //     }
-                // }
             }
         }
     )*

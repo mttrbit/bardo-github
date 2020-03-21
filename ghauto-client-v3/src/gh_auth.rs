@@ -94,6 +94,8 @@ pub fn github_authorize() {
             println!("Github returned the following token:\n{:?}\n", token_res);
 
             if let Ok(token) = token_res {
+                println!("token: {:#?}", token.access_token().secret());
+
                 let scopes = if let Some(scopes_vec) = token.scopes() {
                     scopes_vec
                         .iter()

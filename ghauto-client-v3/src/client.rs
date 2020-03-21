@@ -123,7 +123,7 @@ mod tests {
     }
 
     fn setup_github_connection() -> Github {
-        Github::new("test_token".to_string())
+        Github::new("YOUR_TOKEN".to_string())
     }
 
     #[test]
@@ -131,8 +131,8 @@ mod tests {
         let g = setup_github_connection()
             .get()
             .custom_endpoint("users")
-            //.execute::<serde_json::Value>()
-            .execute::<Vec<User>>()
+            .execute::<serde_json::Value>()
+            //.execute::<Vec<User>>()
             .unwrap();
         println!("response {:#?}", g);
         //.expect("Connection failed");
@@ -147,4 +147,10 @@ mod tests {
         //     }
         // };
     }
+
+    // #[test]
+    // fn auth() {
+    //     use crate::gh_auth::*;
+    //     github_authorize();
+    // }
 }
