@@ -123,7 +123,7 @@ mod tests {
     }
 
     fn setup_github_connection() -> Github {
-        Github::new("YOUR_TOKEN".to_string())
+        Github::new(ghauto_config::credentials::access_token().unwrap().to_string())
     }
 
     #[test]

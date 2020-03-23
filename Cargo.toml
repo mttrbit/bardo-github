@@ -3,4 +3,5 @@ members = [
   "ghauto",
   "ghauto-console",
   "ghauto-client-v3",
+  "ghauto-config",
 ]

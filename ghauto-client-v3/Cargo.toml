@@ -6,17 +6,22 @@ edition = "2018"
 
 [dependencies]
 # github-gql-rs = "0.0.1"
+webbrowser = "0.5.2"
 async-std = "1.5.0"
+dirs-sys = "0.3.4"
 bytes = "0.5.4"
 hyper = { version = "0.13.2" }
 error-chain = "0.12.2"
 tokio = { version = "0.2.11", features = ["full"] }
+toml = "0.5"
 http = "0.2.0"
 serde = "1.0.104"
 serde_json = "1.0.48"
 oauth2 = { version = "3.0.0-alpha.9" }
 serde_derive = "1.0.90"
 reqwest = { version = "0.10.4", features = ["blocking", "json", "rustls-tls"] }
+
+ghauto-config = { path = "../ghauto-config", version = "0.0.1" }
 # http-types = {version = "1.0.1", features = ["hyperium_http"]}
 
 [dev-dependencies]

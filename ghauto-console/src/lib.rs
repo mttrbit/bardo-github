@@ -1,9 +1,13 @@
 extern crate clap;
 
+extern crate ghauto_config;
+
 use clap::App;
+use ghauto_config::credentials::{client_id, client_secret};
+use ghauto_client_v3::gh_auth::github_authorize;
 
 pub fn run() {
-     let matches = App::new("MyApp")
+     let matches = App::new("bardo")
         .version("0.0.1")
         .author("Sebastian Kaiser <sebastian.kaiser@crvsh.io>")
         .about("Does awesome things")
@@ -11,8 +15,9 @@ pub fn run() {
         .arg("<output> 'Sets an optional output file'")
         .arg("-d... 'Turn debugging information on'")
         .subcommand(
-            App::new("check")
+            App::new("gh")
                 .about("provides github automations")
+                .subcommand(App::new("login").about("authenticates with Github")),
         )
         .subcommand(
             App::new("test")
@@ -41,20 +46,24 @@ pub fn run() {
 
     // You can check for the existence of subcommands, and if found use their
     // matches just as you would the top level app
-    if let Some(ref matches) = matches.subcommand_matches("test") {
+    if let Some(ref matches) = matches.subcommand_matches("gh") {
         // "$ myapp test" was run
-        if matches.is_present("list") {
+        if matches.is_present("login") {
             // "$ myapp test -l" was run
-            println!("Printing testing lists...");
-        } else {
-            println!("Not printing testing lists...");
+            println!("Authenticate with Github");
+            login();
         }
     }
-
 
     if let Some(ref matches) = matches.subcommand_matches("check") {
         println!("Github authorize");
        //github_authorize();
     }
 
+}
+
+fn login() {
+    println!("{:?}", client_id());
+    println!("{:?}", client_secret());
+    github_authorize(client_id(), client_secret());
 }

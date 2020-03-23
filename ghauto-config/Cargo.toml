@@ -1,0 +1,11 @@
+[package]
+name = "ghauto-config"
+version = "0.0.1"
+authors = [ "Sebastian Kaiser <sk4is3r@gmail.com>" ]
+edition = "2018"
+
+[dependencies]
+toml = "0.5"
+dirs-sys = "0.3.4"
+serde = "1.0.104"
+serde_derive = "1.0.90"

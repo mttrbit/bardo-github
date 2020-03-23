@@ -17,6 +17,11 @@ extern crate reqwest;
 extern crate serde;
 extern crate serde_json;
 extern crate tokio;
+extern crate webbrowser;
+extern crate dirs_sys;
+extern crate toml;
+
+extern crate ghauto_config;
 
 #[macro_use]
 mod macros;

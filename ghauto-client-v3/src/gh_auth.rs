@@ -9,13 +9,14 @@ use std::env;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use oauth2::url::Url;
+use webbrowser;
 
-pub fn github_authorize() {
+pub fn github_authorize(client_id: Option<String>, client_secret: Option<String>) {
     let github_client_id = ClientId::new(
-        env::var("GITHUB_CLIENT_ID").expect("Missing the GITHUB_CLIENT_ID environment variable."),
+        client_id.expect("Missing the GITHUB_CLIENT_ID environment variable."),
     );
     let github_client_secret = ClientSecret::new(
-        env::var("GITHUB_CLIENT_SECRET").expect("Missing the GITHUB_CLIENT_SECRET environment variable."),
+        client_secret.expect("Missing the GITHUB_CLIENT_SECRET environment variable."),
     );
     let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string()).expect("Invalid token URL");
     let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string()).expect("Invalid token endpoint URL");
@@ -32,13 +33,11 @@ pub fn github_authorize() {
     let(authorize_url, csrf_state) = client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("public_repo".to_string()))
+        .add_scope(Scope::new("repo".to_string()))
         .add_scope(Scope::new("user:email".to_string()))
         .url();
 
-    println!(
-        "Open this URL in your browser:\n{}\n",
-        authorize_url.to_string()
-    );
+    webbrowser::open(&authorize_url.to_string());
 
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
     for stream in listener.incoming() {
@@ -94,8 +93,8 @@ pub fn github_authorize() {
             println!("Github returned the following token:\n{:?}\n", token_res);
 
             if let Ok(token) = token_res {
-                println!("token: {:#?}", token.access_token().secret());
-
+                // println!("token: {:#?}", token.access_token().secret());
+                ghauto_config::credentials::write_access_token(token.access_token().secret());
                 let scopes = if let Some(scopes_vec) = token.scopes() {
                     scopes_vec
                         .iter()
