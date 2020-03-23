@@ -81,28 +81,6 @@ pub fn project_dir() -> Option<PathBuf> {
     None
 }
 
-/// Common files
-
-// Structure credentials
-// [default]
-// bardo_github_client_id =
-// bardo_github_client_secret =
-// bardo_github_access_token =
-pub fn credentials_file() -> Option<PathBuf> {
-    config_dir().map(|h| h.join("credentials"))
-}
-
-// Structure config
-// [default]
-// clone_path = "/users/seka/projects/mttrbit/bardo-repos"
-// repositories = [
-//   {org = "crvshlab", name = "test"}
-// , {org = "crvshlab", regex = "nodejs-*"}
-// ]
-pub fn config_file() -> Option<PathBuf> {
-    config_dir().map(|h| h.join("config"))
-}
-
 pub fn write_config_dir() {
     config_dir().map(|buf| std::fs::create_dir_all(buf.as_path()).unwrap_or_else(|why| {
         println!("! {:?}", why.kind());
@@ -110,49 +88,11 @@ pub fn write_config_dir() {
 }
 
 #[cfg(test)]
-mod tests {
+mod file_tests {
     use super::*;
-
-    #[test]
-    fn test_set_env() {
-        env::set_var("BARDO_CONFIG_HOME", "/Users/seka/foobar");
-        assert_eq!(config_file(), Some(PathBuf::from("/Users/seka/foobar/gh/config")));
-        env::remove_var("BARDO_CONFIG_HOME");
-    }
 
     #[test]
     fn test_project_dir() {
         assert_eq!(project_dir(), Some(PathBuf::from("/Users/seka/projects/mttrbit/bardo-github/ghauto-config")));
-    }
-
-    #[test]
-    fn test_repository_file() {
-        assert_eq!(config_file(), Some(PathBuf::from("/Users/seka/.config/bardo/gh/config")));
-    }
-
-    #[test]
-    fn test_config_dir() {
-        config_dir().map(|buf| {
-            assert_eq!(buf.as_path().to_str(), Some("/Users/seka/.config/bardo/gh"))
-        });
-    }
-
-    #[test]
-    fn test_write_repo_file() {
-        project_dir().map(|path| {
-            env::set_var("BARDO_CONFIG_HOME", path.join("temp"));
-        });
-       
-        let toml_str = r#"[default]
-clone_path = "/users/seka/projects/mttrbit/bardo-repos"
-repositories = [
-  {org = "crvshlab", name = "test"}
-, {org = "crvshlab", regex = "nodejs-*"}
-]
-"#;
-
-        let decoded: Value = toml::from_str(toml_str).unwrap();
-        let profile = &decoded["default"];
-        println!("repo file: {:?}", profile);
     }
 }

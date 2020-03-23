@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::env;
 use std::io;
 use std::path::Path;
+use std::path::PathBuf;
 
 use serde_derive::Deserialize;
 
-use crate::file::{credentials_file, read};
+use crate::file::{config_dir, read};
 use crate::profile::profile;
 
 pub use io::Result;
@@ -20,6 +21,15 @@ pub struct ProfileConfig {
     bardo_client_id: Option<String>,
     bardo_client_secret: Option<String>,
     bardo_access_token: Option<String>,
+}
+
+// Structure credentials
+// [default]
+// bardo_github_client_id =
+// bardo_github_client_secret =
+// bardo_github_access_token =
+pub fn credentials_file() -> Option<PathBuf> {
+    config_dir().map(|h| h.join("credentials"))
 }
 
 /// Read toml file into `Value` from given path.

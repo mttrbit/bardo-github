@@ -21,5 +21,6 @@ mod tests {
         env::set_var("BARDO_DEFAULT_PROFILE", "foobar");
         let profile = profile();
         assert_eq!(profile.expect("default profile is set"), "foobar");
+        env::remove_var("BARDO_DEFAULT_PROFILE");
     }
 }

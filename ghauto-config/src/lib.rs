@@ -11,3 +11,4 @@ extern crate serde_derive;
 pub mod file;
 pub mod profile;
 pub mod credentials;
+pub mod config;
