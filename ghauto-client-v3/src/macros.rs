@@ -83,7 +83,6 @@ macro_rules! from {
                     // We've checked that this works
                     let mut req = f.request.unwrap();
                     let url = url_join(req.borrow().url(), $e2);
-                    println!("{:?}", url);
                     match url {
                         Ok(u) => {
                             *req.get_mut().url_mut() = u;
