@@ -19,7 +19,7 @@ struct User {
 }
 
 // A simple type alias so as to DRY.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
 
 struct Github {
     token: String,
@@ -79,6 +79,11 @@ impl Github {
 
 impl<'g> GetQueryBuilder<'g> {
     func_client!(custom_endpoint, CustomQuery, endpoint_str);
+
+
+    /// Query the user endpoint
+    func_client!(user, crate::users::get::User<'g>);
+
 }
 
 // exec!(Github);
@@ -134,7 +139,7 @@ mod tests {
             .execute::<serde_json::Value>()
             //.execute::<Vec<User>>()
             .unwrap();
-        println!("response {:#?}", g);
+        // println!("response {:#?}", g);
         //.expect("Connection failed");
 
         // let response = CustomQuery::execute::<Vec<User>>().await;
@@ -146,6 +151,18 @@ mod tests {
         //         println!("error: {:#?}", e);
         //     }
         // };
+    }
+
+ #[test]
+    fn users() {
+        let g = setup_github_connection()
+            .get()
+            .user()
+            .emails()
+            .execute::<serde_json::Value>()
+            //.execute::<Vec<User>>()
+            .unwrap();
+        println!("response {:#?}", g);
     }
 
     // #[test]

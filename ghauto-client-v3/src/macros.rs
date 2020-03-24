@@ -33,12 +33,12 @@ macro_rules! from {
                             let sep =
                                 if req
                                     .get_mut()
-                                    .uri()
+                                    .url()
                                     .query()
                                     .is_some() { "&" } else { "?" };
                             hyper::Uri::from_str(
                                 &format!("{}{}{}={}",
-                                    req.get_mut().uri(),
+                                    req.get_mut().url(),
                                     sep,
                                     $e1,
                                     param
@@ -47,7 +47,7 @@ macro_rules! from {
                         });
                     match url {
                         Ok(u) => {
-                            *req.get_mut().uri_mut() = u;
+                            *req.get_mut().url_mut() = u;
                             f.request = Ok(req);
                         },
                         Err(e) => {
@@ -82,10 +82,11 @@ macro_rules! from {
                 if f.request.is_ok() {
                     // We've checked that this works
                     let mut req = f.request.unwrap();
-                    let url = url_join(req.borrow().uri(), $e2);
+                    let url = url_join(req.borrow().url(), $e2);
+                    println!("{:?}", url);
                     match url {
                         Ok(u) => {
-                            *req.get_mut().uri_mut() = u;
+                            *req.get_mut().url_mut() = u;
                             f.request = Ok(req);
                         },
                         Err(e) => {
@@ -134,7 +135,6 @@ macro_rules! from {
                 let client = Client::new();
 
                 let res = client.execute(request.try_clone().unwrap()).and_then(|req| {
-                    println!("{:?}", req);
                     let token = String::from("token ") + &gh.token;
                     Ok((request, HeaderValue::from_str(&token).unwrap()))
                 });
@@ -284,4 +284,24 @@ macro_rules! func_client{
             self.into()
         }
     );
+}
+
+/// Common imports for every file
+macro_rules! imports {
+    () => {
+        use crate::util::url_join;
+
+        use reqwest::blocking::{Client, Request};
+        use reqwest::{Url, Method};
+        use bytes::buf::ext::BufExt;
+
+        use hyper::{Body, HeaderMap, Response, StatusCode};
+        use serde::de::DeserializeOwned;
+
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        use $crate::client::Result;
+        use $crate::client::Executor;
+    };
 }

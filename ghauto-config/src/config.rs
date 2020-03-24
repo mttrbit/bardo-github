@@ -34,11 +34,7 @@ mod config_tests {
     }
 
     #[test]
-    fn test_write_repo_file() {
-        project_dir().map(|path| {
-            env::set_var("BARDO_CONFIG_HOME", path.join("temp"));
-        });
-
+    fn test_config() {
         let toml_str = r#"[default]
 clone_path = "/Users/seka/projects/mttrbit/bardo-repos"
 repositories = [
@@ -49,8 +45,7 @@ repositories = [
 
         let decoded: Value = toml::from_str(toml_str).unwrap();
         let profile = &decoded["default"];
-        println!("repo file: {:?}", profile);
-        env::remove_var("BARDO_CONFIG_HOME");
+        println!("repo file: {:?}", profile["repositories"]);
     }
 
     #[test]

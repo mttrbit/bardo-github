@@ -31,4 +31,6 @@ pub mod client;
 pub mod errors;
 pub mod gh_auth;
 
+pub mod users;
+
 pub use hyper::{HeaderMap, StatusCode};
