@@ -23,6 +23,26 @@ pub struct ProfileConfig {
     bardo_access_token: Option<String>,
 }
 
+impl Clone for ProfileConfig {
+    fn clone(&self) -> Self {
+        Self {
+            bardo_client_id: self.bardo_client_id.clone(),
+            bardo_client_secret: self.bardo_client_secret.clone(),
+            bardo_access_token: self.bardo_access_token.clone(),
+        }
+    }
+}
+
+impl ProfileConfig {
+    pub fn new(client_id: String, client_secret: String, access_token: String) -> Self {
+        Self {
+            bardo_client_id: Some(client_id),
+            bardo_client_secret: Some(client_secret),
+            bardo_access_token: Some(access_token),
+        }
+    }
+}
+
 // Structure credentials
 // [default]
 // bardo_github_client_id =
@@ -61,7 +81,9 @@ pub fn write_access_token(access_token: &str) -> Result<()> {
     }
 }
 
-pub fn client_id() -> Option<String> {
+fn read_from_credentials_file<F>(f: F) -> Option<String> where
+    F: Fn(&ProfileConfig) -> Option<String>
+{
     env::var_os("GITHUB_CLIENT_ID")
         .map(|s| std::ffi::OsString::into_string(s).unwrap())
         .or_else(|| match credentials_file() {
@@ -70,63 +92,70 @@ pub fn client_id() -> Option<String> {
                 let creds: Profiles = read_toml(toml_str).unwrap();
                 let default_profile = profile().unwrap();
                 match creds.profiles.get(&default_profile) {
-                    Some(p) => {
-                        let client_id = p.bardo_client_id.as_ref().unwrap();
-
-                        Some(client_id.to_string())
-                    }
+                    Some(p) => f(&p),
                     _ => panic!("profile not found"),
                 }
             }
             None => panic!("could not read from config file"),
         })
+}
+
+fn reader_test<F>(f: F) -> Option<ProfileConfig> where
+    F: Fn(&ProfileConfig) -> Option<ProfileConfig>
+{
+    match credentials_file() {
+            Some(buf) => {
+                let toml_str = buf.as_path().to_str().unwrap();
+                let creds: Profiles = read_toml(toml_str).unwrap();
+                let default_profile = profile().unwrap();
+                match creds.profiles.get(&default_profile) {
+                    Some(p) => f(&p),
+                    _ => panic!("profile not found"),
+                }
+            }
+            None => panic!("could not read from config file"),
+    }
+}
+
+fn read_pc(pc: &ProfileConfig) -> Option<ProfileConfig> {
+    Some(pc.clone())
+}
+
+fn read_client_id(pc: &ProfileConfig) -> Option<String> {
+    let client_id = pc.bardo_client_id.as_ref().unwrap();
+    Some(client_id.to_string())
+}
+
+fn read_client_secret(pc: &ProfileConfig) -> Option<String> {
+    let client_secret = pc.bardo_client_secret.as_ref().unwrap();
+    Some(client_secret.to_string())
+}
+
+fn read_access_token(pc: &ProfileConfig) -> Option<String> {
+    let access_token = pc.bardo_access_token.as_ref().unwrap();
+    Some(access_token.to_string())
+}
+
+pub fn client_id() -> Option<String> {
+    read_from_credentials_file(read_client_id)
 }
 
 pub fn client_secret() -> Option<String> {
-    env::var_os("GITHUB_CLIENT_SECRET")
-        .map(|s| std::ffi::OsString::into_string(s).unwrap())
-        .or_else(|| match credentials_file() {
-            Some(buf) => {
-                let toml_str = buf.as_path().to_str().unwrap();
-                let creds: Profiles = read_toml(toml_str).unwrap();
-                let default_profile = profile().unwrap();
-                match creds.profiles.get(&default_profile) {
-                    Some(p) => {
-                        let client_id = p.bardo_client_secret.as_ref().unwrap();
-
-                        Some(client_id.to_string())
-                    }
-                    _ => panic!("profile not found"),
-                }
-            }
-            None => panic!("could not read from config file"),
-        })
+    read_from_credentials_file(read_client_secret)
 }
 
 pub fn access_token() -> Option<String> {
-    env::var_os("GITHUB_ACCESS_TOKEN")
-        .map(|s| std::ffi::OsString::into_string(s).unwrap())
-        .or_else(|| match credentials_file() {
-            Some(buf) => {
-                let toml_str = buf.as_path().to_str().unwrap();
-                let creds: Profiles = read_toml(toml_str).unwrap();
-                let default_profile = profile().unwrap();
-                match creds.profiles.get(&default_profile) {
-                    Some(p) => {
-                        let client_id = p.bardo_access_token.as_ref().unwrap();
-
-                        Some(client_id.to_string())
-                    }
-                    _ => panic!("profile not found"),
-                }
-            }
-            None => panic!("could not read from config file"),
-        })
+    read_from_credentials_file(read_access_token)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_reader() {
+        println!("{:?}", reader_test(read_pc));
+    }
 
     #[test]
     fn test_load_toml() {
