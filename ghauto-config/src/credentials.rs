@@ -22,7 +22,7 @@ pub struct Credentials {
 }
 
 #[derive(Debug,Deserialize)]
-pub struct BardoConfig {
+pub struct BardoCredentials {
     profiles: HashMap<String, Credentials>,
 }
 
@@ -90,7 +90,7 @@ impl Credentials {
     }
 }
 
-impl BardoConfig {
+impl BardoCredentials {
 
     pub fn read_from<F>(reader: F) -> Result<Self>
     where
@@ -110,7 +110,7 @@ impl BardoConfig {
 
     pub fn write_to<F>(&self, writer: F) -> Result<()>
     where
-        F: Fn(&BardoConfig) -> Result<()>,
+        F: Fn(&BardoCredentials) -> Result<()>,
     {
         writer(&self)
     }
@@ -166,7 +166,7 @@ mod tests {
 
         let reader = || read_bytes(toml_str.as_bytes());
 
-        let config = BardoConfig::read_from(reader).expect("config not parsed");
+        let config = BardoCredentials::read_from(reader).expect("config not parsed");
         assert_eq!(false, config.profiles.is_empty());
         assert_eq!(2, config.profiles.keys().len());
         assert_eq!(true, config.profiles.get("default").is_some());
@@ -187,7 +187,7 @@ mod tests {
                 access_token: None,
             }
         );
-        let config = BardoConfig {
+        let config = BardoCredentials {
             profiles: map,
         };
 
@@ -212,7 +212,7 @@ mod tests {
                 access_token: None,
             }
         );
-        let mut config = BardoConfig {
+        let mut config = BardoCredentials {
             profiles: map,
         };
 
