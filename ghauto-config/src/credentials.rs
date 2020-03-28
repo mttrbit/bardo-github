@@ -1,45 +1,118 @@
 use std::collections::HashMap;
-use std::env;
 use std::io;
-use std::path::Path;
 use std::path::PathBuf;
 
 use serde_derive::Deserialize;
 
-use crate::file::{config_dir, read};
-use crate::profile::profile;
+use crate::file::config_dir;
 
 pub use io::Result;
+#[derive(Debug,Deserialize)]
+pub struct ClientId(pub String);
+#[derive(Debug,Deserialize)]
+pub struct ClientSecret(pub String);
+#[derive(Debug,Deserialize)]
+pub struct AccessToken(pub String);
 
-#[derive(Debug, Deserialize)]
-pub struct Profiles {
-    profiles: HashMap<String, ProfileConfig>,
+#[derive(Debug,Deserialize)]
+pub struct Credentials {
+    client_id: ClientId,
+    client_secret: ClientSecret,
+    access_token: Option<AccessToken>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ProfileConfig {
-    bardo_client_id: Option<String>,
-    bardo_client_secret: Option<String>,
-    bardo_access_token: Option<String>,
+#[derive(Debug,Deserialize)]
+pub struct BardoConfig {
+    profiles: HashMap<String, Credentials>,
 }
 
-impl Clone for ProfileConfig {
+impl Clone for Credentials {
     fn clone(&self) -> Self {
         Self {
-            bardo_client_id: self.bardo_client_id.clone(),
-            bardo_client_secret: self.bardo_client_secret.clone(),
-            bardo_access_token: self.bardo_access_token.clone(),
+            client_id: ClientId(self.client_id.0.clone()),
+            client_secret: ClientSecret(self.client_secret.0.clone()),
+            access_token: match &self.access_token {
+                Some(o) => Some(AccessToken(o.0.clone())),
+                _ => None,
+            },
         }
     }
 }
 
-impl ProfileConfig {
-    pub fn new(client_id: String, client_secret: String, access_token: String) -> Self {
+impl Credentials {
+    fn new(client_id: ClientId, client_secret: ClientSecret, access_token: Option<AccessToken>) -> Self {
         Self {
-            bardo_client_id: Some(client_id),
-            bardo_client_secret: Some(client_secret),
-            bardo_access_token: Some(access_token),
+            client_id: client_id,
+            client_secret: client_secret,
+            access_token: access_token,
         }
+    }
+
+    pub fn client_id(&self) -> &ClientId {
+        &self.client_id
+    }
+
+    pub fn client_secret(&self) -> &ClientSecret {
+        &self.client_secret
+    }
+
+    pub fn access_token(&self) -> Option<&AccessToken> {
+        self.access_token.as_ref()
+    }
+
+    pub fn access_token_mut(&mut self) -> &mut Option<AccessToken> {
+        &mut self.access_token
+    }
+
+    pub fn read_from<F>(reader: F) -> Result<Self>
+    where
+        F: Fn() -> Result<toml::Value>,
+    {
+        reader().map(|section| {
+            let str_client_id = section["bardo_client_id"].as_str().expect("field 'bardo_client_id' is missing");
+            let str_client_secret = section["bardo_client_secret"].as_str().expect("field 'bardo_client_secret' is missing");
+            let client_id = ClientId(str_client_id.to_string());
+            let client_secret = ClientSecret(str_client_secret.to_string());
+            let access_token = section.get("bardo_access_token").map(|f| AccessToken(f.as_str().unwrap().to_string()));
+            Self {
+                client_id: client_id,
+                client_secret: client_secret,
+                access_token: access_token,
+            }
+        })
+    }
+
+    pub fn write_to<F>(&self, writer: F) -> Result<()>
+    where
+        F: Fn(&Credentials) -> Result<()>,
+    {
+        writer(&self)
+    }
+}
+
+impl BardoConfig {
+
+    pub fn read_from<F>(reader: F) -> Result<Self>
+    where
+        F: Fn() -> Result<toml::Value>,
+    {
+        reader().map(|toml| {
+            let mut map: HashMap<String, Credentials> = HashMap::new();
+            for (k, v) in toml.as_table().as_ref().expect("file has invalid format").iter() {
+                let _ = Credentials::read_from(|| Ok(v.clone())).map(|creds| map.insert(k.to_string(), creds));
+            }
+           
+            Self {
+                profiles: map,
+            }
+        })
+    }
+
+    pub fn write_to<F>(&self, writer: F) -> Result<()>
+    where
+        F: Fn(&BardoConfig) -> Result<()>,
+    {
+        writer(&self)
     }
 }
 
@@ -52,172 +125,106 @@ pub fn credentials_file() -> Option<PathBuf> {
     config_dir().map(|h| h.join("credentials"))
 }
 
-/// Read toml file into `Value` from given path.
-/// The path can be `String` or `Path`.
-pub fn read_toml<P: AsRef<Path>>(path: P) -> Result<Profiles> {
-    let bytes: Vec<u8> = read(path)?;
-    toml::from_slice(bytes.as_ref())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "file content is no valid toml"))
-}
-
-pub fn read_toml_str(toml_str: &str) -> Result<Profiles> {
-    toml::from_slice(toml_str.as_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "file content is no valid toml"))
-}
-
-pub fn write_access_token(access_token: &str) -> Result<()> {
-    let default_profile = profile().unwrap();
-
-    match credentials_file().map(|path_buf| {
-        crate::file::read_toml(path_buf.clone())
-            .map(|mut content| {
-                content["profiles"][default_profile]["bardo_access_token"] = toml::Value::from(access_token.to_string());
-                let toml = toml::to_string(&content).unwrap();
-                crate::file::write_str(path_buf.as_path(), toml)
-            })
-    }) {
-        Some(_) => Ok(()),
-        None => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid toml")),
-    }
-}
-
-fn read_from_credentials_file<F>(f: F) -> Option<String> where
-    F: Fn(&ProfileConfig) -> Option<String>
-{
-    env::var_os("GITHUB_CLIENT_ID")
-        .map(|s| std::ffi::OsString::into_string(s).unwrap())
-        .or_else(|| match credentials_file() {
-            Some(buf) => {
-                let toml_str = buf.as_path().to_str().unwrap();
-                let creds: Profiles = read_toml(toml_str).unwrap();
-                let default_profile = profile().unwrap();
-                match creds.profiles.get(&default_profile) {
-                    Some(p) => f(&p),
-                    _ => panic!("profile not found"),
-                }
-            }
-            None => panic!("could not read from config file"),
-        })
-}
-
-fn reader_test<F>(f: F) -> Option<ProfileConfig> where
-    F: Fn(&ProfileConfig) -> Option<ProfileConfig>
-{
-    match credentials_file() {
-            Some(buf) => {
-                let toml_str = buf.as_path().to_str().unwrap();
-                let creds: Profiles = read_toml(toml_str).unwrap();
-                let default_profile = profile().unwrap();
-                match creds.profiles.get(&default_profile) {
-                    Some(p) => f(&p),
-                    _ => panic!("profile not found"),
-                }
-            }
-            None => panic!("could not read from config file"),
-    }
-}
-
-fn read_pc(pc: &ProfileConfig) -> Option<ProfileConfig> {
-    Some(pc.clone())
-}
-
-fn read_client_id(pc: &ProfileConfig) -> Option<String> {
-    let client_id = pc.bardo_client_id.as_ref().unwrap();
-    Some(client_id.to_string())
-}
-
-fn read_client_secret(pc: &ProfileConfig) -> Option<String> {
-    let client_secret = pc.bardo_client_secret.as_ref().unwrap();
-    Some(client_secret.to_string())
-}
-
-fn read_access_token(pc: &ProfileConfig) -> Option<String> {
-    let access_token = pc.bardo_access_token.as_ref().unwrap();
-    Some(access_token.to_string())
-}
-
-pub fn client_id() -> Option<String> {
-    read_from_credentials_file(read_client_id)
-}
-
-pub fn client_secret() -> Option<String> {
-    read_from_credentials_file(read_client_secret)
-}
-
-pub fn access_token() -> Option<String> {
-    read_from_credentials_file(read_access_token)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::profile::profile;
+    use crate::file::read_bytes;
 
     #[test]
-    fn test_reader() {
-        println!("{:?}", reader_test(read_pc));
-    }
-
-    #[test]
-    fn test_load_toml() {
+    fn read_from() {
         let toml_str = r#"
-            [profiles.default]
+            [default]
             bardo_client_id = "client_id"
             bardo_client_secret = "client_secret"
             bardo_access_token = "access_token"
         "#;
 
-        let p: Profiles = read_toml_str(toml_str).ok().unwrap();
-        match p.profiles.get("default") {
-            Some(default) => {
-                assert_eq!(default.bardo_client_id, Some("client_id".to_string()));
-                assert_eq!(
-                    default.bardo_client_secret,
-                    Some("client_secret".to_string())
-                );
-                assert_eq!(default.bardo_access_token, Some("access_token".to_string()));
+        let reader = || read_bytes(toml_str.as_bytes()).map(|toml| {
+            let p = profile().expect("profile is not set");
+            toml[p].clone()
+        });
+
+        let creds = Credentials::read_from(reader).expect("credentials not parsed");
+        assert_eq!("client_id".to_string(), creds.client_id().0);
+        assert_eq!("client_secret".to_string(), creds.client_secret().0);
+        assert_eq!(false, creds.access_token().is_none());
+    }
+
+    #[test]
+    fn read_from_full() {
+        let toml_str = r#"
+            [default]
+            bardo_client_id = "client_id"
+            bardo_client_secret = "client_secret"
+            bardo_access_token = "access_token"
+
+            [foo]
+            bardo_client_id = "client_id"
+            bardo_client_secret = "client_secret"
+        "#;
+
+        let reader = || read_bytes(toml_str.as_bytes());
+
+        let config = BardoConfig::read_from(reader).expect("config not parsed");
+        assert_eq!(false, config.profiles.is_empty());
+        assert_eq!(2, config.profiles.keys().len());
+        assert_eq!(true, config.profiles.get("default").is_some());
+        assert_eq!(true, config.profiles.get("default").unwrap().access_token().is_some());
+        assert_eq!(true, config.profiles.get("foo").is_some());
+        assert_eq!(true, config.profiles.get("foo").unwrap().access_token().is_none());
+    }
+
+    #[test]
+    fn write_to() {
+
+        let mut map: HashMap<String, Credentials> = HashMap::new();
+        map.insert(
+            "default".to_string(),
+            Credentials {
+                client_id: ClientId("id".to_string()),
+                client_secret: ClientSecret("secret".to_string()),
+                access_token: None,
             }
-            _ => panic!("profile not found"),
+        );
+        let config = BardoConfig {
+            profiles: map,
         };
+
+        config.write_to(|c| {
+            let creds = c.profiles.get("default").unwrap();
+            let str = format!("{}:{}:{:?}", creds.client_id().0, creds.client_secret().0, creds.access_token());
+            assert_eq!("id:secret:None", str);
+            Ok(())
+        }).expect("write_to panicked");
+
     }
 
     #[test]
-    fn test_load_toml_fails() {
-        let toml_str = r#"
-            [profiles.default]
-            bardo_client_id = "client_id"
-            bardo_client_secret = "client_secret"
-            bardo_access_token = "access_token"
-        "#;
+    fn write_to_update_access_token() {
 
-        let p: Profiles = read_toml_str(toml_str).ok().unwrap();
-        assert_eq!(p.profiles.get("default2").is_none(), true);
+        let mut map: HashMap<String, Credentials> = HashMap::new();
+        map.insert(
+            "default".to_string(),
+            Credentials {
+                client_id: ClientId("id".to_string()),
+                client_secret: ClientSecret("secret".to_string()),
+                access_token: None,
+            }
+        );
+        let mut config = BardoConfig {
+            profiles: map,
+        };
+
+        let creds = config.profiles.get_mut("default").unwrap();
+
+        *creds.access_token_mut() = Some(AccessToken("token".to_string()));
+       
+        config.write_to(|c| {
+            let creds = c.profiles.get("default").unwrap();
+            let str = format!("{}:{}:{}", creds.client_id().0, creds.client_secret().0, creds.access_token().unwrap().0);
+            assert_eq!("id:secret:token", str);
+            Ok(())
+        }).expect("write_to panicked");
     }
-
-    // #[test]
-    // fn test_write_access_token() {
-    //     write_access_token("hello".to_string());
-    // }
-
-
-    // #[test]
-//     fn test_write_credential_file() {
-//         project_dir().map(|path| {
-//             env::set_var("BARDO_CONFIG_HOME", path.join("temp"));
-//         });
-//         let toml_str = r#"[default]
-// bardo_github_client_id = "client_id"
-// bardo_github_client_secret = "client_secret"
-// bardo_github_access_token = "access_token"
-// "#;
-
-//         write_config_dir();
-//         match credentials_file() {
-//             Some(buf) => {
-//                 let _ = write_str(buf.as_path(), toml_str).map_err(|_| {
-//                     panic!("could not write config file");
-//                 });
-//             },
-//             None => { panic!("could not read path to config file"); }
-//         }
-//     }
 }

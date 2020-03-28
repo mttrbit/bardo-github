@@ -1,11 +1,7 @@
-
-use std::env;
 use toml::Value;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::io::{self, Write};
 
-use crate::file::{config_dir, project_dir, read};
+use crate::file::config_dir;
 use crate::profile::profile;
 
 
@@ -54,8 +50,10 @@ pub fn consume_repos2<F>(f: F) where
 #[cfg(test)]
 mod config_tests {
     use super::*;
+    use std::env;
+    use std::process::Command;
 
-   #[test]
+    #[test]
     fn test_command() {
         let clone_repo = |path: &str, repo: &Value| {
             let org = repo.get("org").unwrap();
@@ -90,7 +88,7 @@ mod config_tests {
 
     #[test]
     fn test_print_path() {
-        let print_path = |path: &str, repo: &Value| {
+        let print_path = |path: &str, _repo: &Value| {
             println!("{}", path)
         };
 
@@ -145,7 +143,7 @@ repositories = [
 "#;
 
         let decoded: Value = toml::from_str(toml_str).unwrap();
-        let profile = &decoded["default"];
+        let _profile = &decoded["default"];
         // println!("repo file: {:?}", profile["repositories"]);
     }
 

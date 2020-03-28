@@ -29,6 +29,11 @@ pub fn read_str<P: AsRef<Path>>(path: P) -> Result<String> {
     })
 }
 
+pub fn read_bytes(bytes: &[u8]) -> Result<Value> {
+    toml::from_slice(bytes)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "file content is no valid toml"))
+}
+
 /// Read toml file into `Value` from given path.
 /// The path can be `String` or `Path`.
 pub fn read_toml<P: AsRef<Path>>(path: P) -> Result<Value> {
