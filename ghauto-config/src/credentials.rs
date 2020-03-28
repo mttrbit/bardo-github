@@ -2,26 +2,21 @@ use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
 
-use serde_derive::Deserialize;
-
 use crate::file::config_dir;
 
 pub use io::Result;
-#[derive(Debug,Deserialize)]
+
 pub struct ClientId(pub String);
-#[derive(Debug,Deserialize)]
 pub struct ClientSecret(pub String);
-#[derive(Debug,Deserialize)]
+#[derive(Debug)]
 pub struct AccessToken(pub String);
 
-#[derive(Debug,Deserialize)]
 pub struct Credentials {
     client_id: ClientId,
     client_secret: ClientSecret,
     access_token: Option<AccessToken>,
 }
 
-#[derive(Debug,Deserialize)]
 pub struct BardoCredentials {
     profiles: HashMap<String, Credentials>,
 }
