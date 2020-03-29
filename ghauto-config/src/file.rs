@@ -65,8 +65,10 @@ pub fn write_str<P: AsRef<Path>, S: AsRef<str>>(path: P, data: S) -> Result<()> 
 pub fn home_dir() -> Option<PathBuf> { dirs_sys::home_dir() }
 
 pub fn config_dir() -> Option<PathBuf> {
-    env::var_os("BARDO_CONFIG_HOME").and_then(dirs_sys::is_absolute_path)
-                                    .or_else(|| home_dir().map(|h| h.join(".config/bardo"))).map(|h| h.join("gh"))
+    env::var_os("BARDO_CONFIG_HOME")
+        .and_then(dirs_sys::is_absolute_path)
+        .or_else(|| home_dir().map(|h| h.join(".config/bardo")))
+        .map(|h| h.join("gh"))
 }
 
 /// Find project dir based on location of Cargo.toml

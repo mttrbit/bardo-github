@@ -94,7 +94,7 @@ pub fn github_authorize(client_id: Option<String>, client_secret: Option<String>
 
             if let Ok(token) = token_res {
                 // println!("token: {:#?}", token.access_token().secret());
-                ghauto_config::credentials::write_access_token(token.access_token().secret());
+                // ghauto_config::credentials::write_access_token(token.access_token().secret());
                 let scopes = if let Some(scopes_vec) = token.scopes() {
                     scopes_vec
                         .iter()

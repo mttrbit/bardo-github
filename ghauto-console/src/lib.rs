@@ -1,13 +1,20 @@
 extern crate clap;
 
-extern crate ghauto_config;
+extern crate serde_json;
+extern crate ghauto_config as config;
+extern crate ghauto_client_v3 as client;
 
 use clap::App;
-use ghauto_config::credentials::{client_id, client_secret};
-use ghauto_client_v3::gh_auth::github_authorize;
+
+use config::context::BardoContext;
+use client::client::Github;
+
+pub mod commands;
+
+use commands::users::Command;
 
 pub fn run() {
-     let matches = App::new("bardo")
+    let matches = App::new("bardo")
         .version("0.0.1")
         .author("Sebastian Kaiser <sebastian.kaiser@crvsh.io>")
         .about("Does awesome things")
@@ -17,7 +24,7 @@ pub fn run() {
         .subcommand(
             App::new("gh")
                 .about("provides github automations")
-                .subcommand(App::new("login").about("authenticates with Github")),
+                .subcommand(App::new("test").about("authenticates with Github")),
         )
         .subcommand(
             App::new("test")
@@ -48,22 +55,20 @@ pub fn run() {
     // matches just as you would the top level app
     if let Some(ref matches) = matches.subcommand_matches("gh") {
         // "$ myapp test" was run
-        if matches.is_present("login") {
+        if matches.is_present("test") {
+
+            let context = BardoContext::init().unwrap();
+            let access_token = &context.credentials().profiles().get("default").unwrap().access_token().unwrap().0;
+            let gh = Github::new(access_token);
+
+            Command::new(context, gh).run();
             // "$ myapp test -l" was run
             println!("Authenticate with Github");
-            login();
         }
     }
 
     if let Some(ref matches) = matches.subcommand_matches("check") {
         println!("Github authorize");
-       //github_authorize();
+        //github_authorize();
     }
-
-}
-
-fn login() {
-    println!("{:?}", client_id());
-    println!("{:?}", client_secret());
-    github_authorize(client_id(), client_secret());
 }

@@ -302,19 +302,19 @@ mod config_tests {
     }
 
 
-    #[test]
-    fn test_print_urls() {
-        let print_url = |repo: &Value| {
-            let org = repo.get("org").unwrap();
-            let name = repo.get("name").unwrap();
-            let url = format!("https://github.com/{}/{}",
-                                     org.as_str().unwrap(),
-                                     name.as_str().unwrap());
-            assert_eq!(url, "https://github.com/crvshlab/backoffice-is-analysis");
-        };
+    // #[test]
+    // fn test_print_urls() {
+    //     let print_url = |repo: &Value| {
+    //         let org = repo.get("org").unwrap();
+    //         let name = repo.get("name").unwrap();
+    //         let url = format!("https://github.com/{}/{}",
+    //                                  org.as_str().unwrap(),
+    //                                  name.as_str().unwrap());
+    //         assert_eq!(url, "https://github.com/crvshlab/backoffice-is-analysis");
+    //     };
 
-        consume_repos(print_url);
-    }
+    //     consume_repos(print_url);
+    // }
 
 //     #[test]
 //     fn test_print_ssh_urls() {

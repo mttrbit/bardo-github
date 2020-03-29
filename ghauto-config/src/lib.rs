@@ -12,3 +12,4 @@ pub mod file;
 pub mod profile;
 pub mod credentials;
 pub mod config;
+pub mod context;

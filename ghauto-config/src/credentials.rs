@@ -87,6 +87,10 @@ impl Credentials {
 
 impl BardoCredentials {
 
+    pub fn profiles(&self) -> &HashMap<String, Credentials> {
+        &self.profiles
+    }
+
     pub fn read_from<F>(reader: F) -> Result<Self>
     where
         F: Fn() -> Result<toml::Value>,

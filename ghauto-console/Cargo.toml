@@ -5,6 +5,7 @@ authors = [ "Sebastian Kaiser <sk4is3r@gmail.com>" ]
 edition = "2018"
 
 [dependencies]
+serde_json = "1.0.48"
 ghauto-config = { path = "../ghauto-config", version = "0.0.1" }
 ghauto-client-v3 = { path = "../ghauto-client-v3", version = "0.0.1" }
 clap = { git = "https://github.com/clap-rs/clap/", features = ["yaml"] }

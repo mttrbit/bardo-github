@@ -38,18 +38,16 @@ repositories = [
 
 # Usage (Planned)
 ```
-bardo gh pr [ls, approve]
+bardo gh pr [ls, approve, view, open]
 
-bardo gh issue [ls]
+bardo gh issue [ls, open]
 
-bardo gh repo [view, create, clone, fork, add, rename]
+bardo gh repo [view, create, clone, fork, add, rename, open]
 
 bardo gh help
-  
 
+bardo project [init]
 ```
-
-
 
 # Discussion
 
@@ -58,4 +56,3 @@ Rust seems to be a great language and I simply want to take the chance to learn 
 
 ## Why not using Github Cli?
 Github Cli is an awesome tool but it is still beta. Furthermore it can only fetch repository information on a per repo basis. However, we would like to fetch information about a set of projects and potentially update a set of projects as well. 
-
