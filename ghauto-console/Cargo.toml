@@ -5,7 +5,11 @@ authors = [ "Sebastian Kaiser <sk4is3r@gmail.com>" ]
 edition = "2018"
 
 [dependencies]
+termion = "*"
+prettytable-rs = "^0.8"
+serde = "1.0.104"
 serde_json = "1.0.48"
+serde_derive = "1.0.90"
 ghauto-config = { path = "../ghauto-config", version = "0.0.1" }
 ghauto-client-v3 = { path = "../ghauto-client-v3", version = "0.0.1" }
 clap = { git = "https://github.com/clap-rs/clap/", features = ["yaml"] }

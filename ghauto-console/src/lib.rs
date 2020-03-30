@@ -1,13 +1,18 @@
+#[macro_use]
+extern crate serde_derive;
 extern crate clap;
-
-extern crate serde_json;
-extern crate ghauto_config as config;
+extern crate termion;
+#[macro_use]
+extern crate prettytable;
 extern crate ghauto_client_v3 as client;
+extern crate ghauto_config as config;
+extern crate serde;
+extern crate serde_json;
 
 use clap::App;
 
-use config::context::BardoContext;
 use client::client::Github;
+use config::context::BardoContext;
 
 pub mod commands;
 
@@ -56,9 +61,15 @@ pub fn run() {
     if let Some(ref matches) = matches.subcommand_matches("gh") {
         // "$ myapp test" was run
         if matches.is_present("test") {
-
             let context = BardoContext::init().unwrap();
-            let access_token = &context.credentials().profiles().get("default").unwrap().access_token().unwrap().0;
+            let access_token = &context
+                .credentials()
+                .profiles()
+                .get("default")
+                .unwrap()
+                .access_token()
+                .unwrap()
+                .0;
             let gh = Github::new(access_token);
 
             Command::new(context, gh).run();
