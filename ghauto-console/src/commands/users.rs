@@ -32,8 +32,6 @@ impl Command {
             .user()
             .emails()
             .execute::<Vec<Email>>()
-            //.execute::<serde_json::Value>()
-            //.execute::<Vec<User>>()
             .unwrap();
         let emails: Vec<Email> = res.unwrap();
         let mut table = Table::new();
@@ -43,12 +41,12 @@ impl Command {
         table.set_format(format);
 
         table.set_titles(row![
-            format!("{}Email{}", color::Fg(color::Blue), style::Reset),
-            format!("{}Primary{}", color::Fg(color::Red), style::Reset)
+            format!("{}{}Email{}", style::Bold, color::Fg(color::Blue), style::Reset),
+            format!("{}{}Primary{}", style::Bold, color::Fg(color::Red), style::Reset)
         ]);
         for e in emails.iter() {
             table.add_row(row![
-                format!("{}{}{}", color::Fg(color::Blue), e.email, style::Reset),
+                format!("{}{}{}", color::Fg(color::LightBlue), e.email, style::Reset),
                 format!("{}{}{}", color::Fg(color::Red), e.primary, style::Reset)
             ]);
         }
