@@ -26,7 +26,7 @@ impl Command {
     }
 
     pub fn run(&self) {
-        let (headers, statusCode, res) = self
+        let (headers, status_code, res) = self
             .gh
             .get()
             .user()

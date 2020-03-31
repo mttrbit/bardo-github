@@ -15,7 +15,7 @@ impl GetLabelsCommand {
     }
 
     pub fn run(&self) {
-        let (headers, statusCode, res) = self
+        let (headers, status_code, res) = self
             .gh
             .get()
             .repos()

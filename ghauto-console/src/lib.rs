@@ -17,87 +17,94 @@ use config::context::BardoContext;
 
 pub mod commands;
 
-use commands::users::Command;
 use commands::get_labels::GetLabelsCommand;
+use commands::users::Command;
 
 pub fn run() {
     let matches = App::new("bardo")
         .version("0.0.1")
-        .author("Sebastian Kaiser <sebastian.kaiser@crvsh.io>")
-        .about("Does awesome things")
-        .arg("-c, --config=[FILE] 'Sets a custom config file'")
-        .arg("<output> 'Sets an optional output file'")
-        .arg("-d... 'Turn debugging information on'")
+        .author("Sebastian Kaiser")
+        .about("The caretaker provides automations and more")
         .subcommand(
             App::new("gh")
-                .about("provides github automations")
-                .subcommand(App::new("test").about("authenticates with Github")),
+                .about("Github repo automations")
+                .subcommand(
+                    App::new("issue")
+                        .about("helpers for issues issues")
+                        .subcommand(App::new("ls").about("iterates over all open issues")),
+                )
+                .subcommand(App::new("project").about("projects and more"))
+                .subcommand(App::new("repo").about("repo and more"))
+                .subcommand(App::new("check").about("Performs checks on configered repos")),
         )
         .subcommand(
-            App::new("emails")
-                .about("does testing things")
-                .arg("-l, --list 'lists test values'"),
-        ).subcommand(
-            App::new("labels")
-                .about("does testing things")
-                .arg("-l, --list 'lists test values'"),
+            App::new("test")
+                .about("some test")
+                .subcommand(App::new("emails").about("emails"))
+                .subcommand(App::new("labels").about("labels")),
         )
+        .arg("-p, --profile 'overwrite profile value'")
         .get_matches();
 
-    // You can check the value provided by positional arguments, or option arguments
-    if let Some(o) = matches.value_of("output") {
-        println!("Value for output: {}", o);
-    }
+    match matches.subcommand() {
+        ("gh", Some(gh_matches)) => match gh_matches.subcommand() {
+            ("issue", Some(issue_matches)) => match issue_matches.subcommand() {
+                ("ls", Some(ls_matches)) => match ls_matches.subcommand() {
+                    ("", None) => {
+                        println!("list all open issues");
+                    }
+                    ("", Some(_)) => {
+                        println!("ls subcommands");
+                    }
+                    _ => unreachable!(),
+                },
+                _ => {
+                    println!("list all open issues");
+                }
+            },
+            ("project", Some(project_matches)) => {
+                println!("project cmds");
+            }
+            ("repo", Some(repo_matches)) => {
+                println!("repo cmds");
+            }
+            ("check", Some(check_matches)) => {
+                println!("check cmds");
+            }
+            _ => unreachable!(),
+        },
+        ("test", Some(test_matches)) => match test_matches.subcommand() {
+            ("emails", Some(_)) => {
+                let context = BardoContext::init().unwrap();
+                let access_token = &context
+                    .credentials()
+                    .profiles()
+                    .get("default")
+                    .unwrap()
+                    .access_token()
+                    .unwrap()
+                    .0;
+                let gh = Github::new(access_token);
 
-    if let Some(c) = matches.value_of("config") {
-        println!("Value for config: {}", c);
-    }
+                Command::new(context, gh).run();
+            }
+            ("labels", Some(_)) => {
+                let context = BardoContext::init().unwrap();
+                let access_token = &context
+                    .credentials()
+                    .profiles()
+                    .get("default")
+                    .unwrap()
+                    .access_token()
+                    .unwrap()
+                    .0;
+                let gh = Github::new(access_token);
 
-    // You can see how many times a particular flag or argument occurred
-    // Note, only flags can have multiple occurrences
-    match matches.occurrences_of("d") {
-        0 => println!("Debug mode is off"),
-        1 => println!("Debug mode is kind of on"),
-        2 => println!("Debug mode is on"),
-        3 | _ => println!("Don't be crazy"),
-    }
-
-    // You can check for the existence of subcommands, and if found use their
-    // matches just as you would the top level app
-    if let Some(ref matches) = matches.subcommand_matches("gh") {
-        // "$ myapp test" was run
-        if matches.is_present("emails") {
-            let context = BardoContext::init().unwrap();
-            let access_token = &context
-                .credentials()
-                .profiles()
-                .get("default")
-                .unwrap()
-                .access_token()
-                .unwrap()
-                .0;
-            let gh = Github::new(access_token);
-
-            Command::new(context, gh).run();
-            // "$ myapp test -l" was run
-        } else if matches.is_present("test") {
-            let context = BardoContext::init().unwrap();
-            let access_token = &context
-                .credentials()
-                .profiles()
-                .get("default")
-                .unwrap()
-                .access_token()
-                .unwrap()
-                .0;
-            let gh = Github::new(access_token);
-
-            GetLabelsCommand::new(context, gh).run();
-        }
-    }
-
-    if let Some(ref matches) = matches.subcommand_matches("check") {
-        println!("Github authorize");
-        //github_authorize();
-    }
+                GetLabelsCommand::new(context, gh).run();
+            }
+            _ => unreachable!(),
+        },
+        ("", None) => println!("No subcommand was used"),
+        _ => unreachable!(),
+    };
 }
