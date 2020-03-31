@@ -80,10 +80,11 @@ impl Github {
 impl<'g> GetQueryBuilder<'g> {
     func_client!(custom_endpoint, CustomQuery, endpoint_str);
 
-
     /// Query the user endpoint
     func_client!(user, crate::users::get::User<'g>);
 
+    /// Query the repos endpoint
+    func_client!(repos, crate::repos::get::Repos<'g>);
 }
 
 // exec!(Github);

@@ -8,6 +8,7 @@ extern crate ghauto_client_v3 as client;
 extern crate ghauto_config as config;
 extern crate serde;
 extern crate serde_json;
+extern crate toml;
 
 use clap::App;
 
@@ -17,6 +18,7 @@ use config::context::BardoContext;
 pub mod commands;
 
 use commands::users::Command;
+use commands::get_labels::GetLabelsCommand;
 
 pub fn run() {
     let matches = App::new("bardo")
@@ -32,7 +34,11 @@ pub fn run() {
                 .subcommand(App::new("test").about("authenticates with Github")),
         )
         .subcommand(
-            App::new("test")
+            App::new("emails")
+                .about("does testing things")
+                .arg("-l, --list 'lists test values'"),
+        ).subcommand(
+            App::new("labels")
                 .about("does testing things")
                 .arg("-l, --list 'lists test values'"),
         )
@@ -60,7 +66,7 @@ pub fn run() {
     // matches just as you would the top level app
     if let Some(ref matches) = matches.subcommand_matches("gh") {
         // "$ myapp test" was run
-        if matches.is_present("test") {
+        if matches.is_present("emails") {
             let context = BardoContext::init().unwrap();
             let access_token = &context
                 .credentials()
@@ -74,7 +80,19 @@ pub fn run() {
 
             Command::new(context, gh).run();
             // "$ myapp test -l" was run
-            println!("Authenticate with Github");
+        } else if matches.is_present("test") {
+            let context = BardoContext::init().unwrap();
+            let access_token = &context
+                .credentials()
+                .profiles()
+                .get("default")
+                .unwrap()
+                .access_token()
+                .unwrap()
+                .0;
+            let gh = Github::new(access_token);
+
+            GetLabelsCommand::new(context, gh).run();
         }
     }
 

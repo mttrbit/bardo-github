@@ -5,6 +5,7 @@ authors = [ "Sebastian Kaiser <sk4is3r@gmail.com>" ]
 edition = "2018"
 
 [dependencies]
+toml = "0.5"
 termion = "*"
 prettytable-rs = "^0.8"
 serde = "1.0.104"
