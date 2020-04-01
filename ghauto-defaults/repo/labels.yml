@@ -1,0 +1,115 @@
+- name: "area/ci"
+  color: "2258aa"
+  description: "Continuous integration, PR testing, and automated build or release process."
+
+- name: "area/data-model"
+  color: "006b75"
+  description: "Issues related to the data model."
+
+- name: "area/frontend"
+  color: "ead29a"
+  description: "Issues related to the UI."
+
+- name: "area/install"
+  color: "870429"
+  description: "Issues related to installation, including initial setup."
+
+- name: "area/security"
+  color: "37268e"
+  description: "Issues related to security."
+
+- name: "kind/bug"
+  color: "fc2929"
+  description: "Outline of a bug."
+
+- name: "kind/discussion"
+  color: "c2e0c6"
+  description: "Indicates an open discusssion with no immediate call to action."
+
+- name: "kind/docs"
+  color: "0c4289"
+  description: "A work item tied to documentation."
+
+- name: "kind/epic"
+  color: "fbca04"
+  description: "A long-lived, PM-driven feature request."
+
+- name: "kind/planning"
+  color: "77ffc8"
+  description: "A checklist of issues that a team is planning for a particular sprint."
+
+- name: "kind/question"
+  color: "c2e0c6"
+  description: "Questions that haven\'t been identified as being feature requests or bugs."
+
+- name: "kind/task"
+  color: "06ce00"
+  description: "Internal things, technical debt, and to-do tasks to be performed."
+
+- name: "lifecycle/active"
+  color: "8af2e6"
+  description: "Indicates that an issue or PR is actively being worked on by a contributor."
+
+- name: "lifecycle/frozen"
+  color: "a3ed34"
+  description: "Indicates that an issue or PR should not be auto-closed due to staleness."
+
+- name: "lifecycle/rotten"
+  color: "5db724"
+  description: "Denotes an issue or PR that has aged beyond stale and will be auto-closed."
+
+- name: "lifecycle/stale"
+  color: "e39eff"
+  description: "Indicates an issue or PR has remained open with no activity and has become stale."
+
+- name: "severity/P1"
+  color: "666666"
+  description: "Has a major impact to usage or development of the system."
+
+- name: "severity/P2"
+  color: "cccccc"
+  description: "Has a minor but important impact to the usage or development of the system."
+
+- name: "severity/blocker"
+  color: "000000"
+  description: "Causes system to crash and be non-recoverable or prevents developers from working."
+
+- name: "sprint/current-sprint"
+  color: "1e79a0"
+  description: "Issue is being worked in the current sprint."
+
+- name: "sprint/next-sprint"
+  color: "11c9fc"
+  description: "Issue is planned to be worked in the next sprint."
+
+- name: "status/analyzing"
+  color: "c1d2ff"
+  description: "An issue has been proposed and it is currently being analyzed for effort and implementation approach."
+
+- name: "status/blocked"
+  color: "ceaaef"
+  description: "Issue that can’t be moved forward."
+
+- name: "status/code-review"
+  color: "e4f265"
+  description: "This issue has a pull request posted for it and is awaiting code review completion."
+
+- name: "status/in-progress"
+  color: "6600f4"
+  description: "This issue has been taken by an engineer and is under active development."
+
+- name: "status/info-needed"
+  color: "f490b0"
+  description: "More information is needed before the issue can move into the “analyzing” state for engineering."
+
+- name: "status/open-for-dev"
+  color: "35eacf"
+  description: "An issue has had its specification reviewed and confirmed. Waiting for an engineer to accept it."
+
+- name: "team/automation"
+  color: "aef29d"
+  description: ""
+
+- name: "team/core"
+  color: "8de572"
+  description: "Issue to be taken by the core team."
