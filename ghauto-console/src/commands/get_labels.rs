@@ -15,7 +15,7 @@ impl GetLabelsCommand {
     }
 
     pub fn run(&self) {
-        let (headers, status_code, res) = self
+        let res = self
             .gh
             .get()
             .repos()
@@ -25,6 +25,6 @@ impl GetLabelsCommand {
             .execute::<toml::Value>()
             .unwrap();
 
-        println!("{:?}", res);
+        println!("{:#?}", res);
     }
 }

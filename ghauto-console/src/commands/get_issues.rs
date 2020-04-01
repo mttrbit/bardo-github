@@ -24,6 +24,7 @@ pub struct Issue {
     labels: Vec<IssueLabel>,
     assignees: Vec<IssueUser>,
     state: String,
+    repository_url: String,
 }
 
 pub struct GetIssuesCommand {
@@ -63,6 +64,14 @@ impl GetIssuesCommand {
             }
         }
 
+
+        fn extract_from_url(url: &str) -> String {
+            let mut s = String::from(url);
+            let offset = 29;
+            s.replace_range(..offset, "");
+            s
+        }
+
         fn print_labels(v: &Vec<IssueLabel>) -> String {
             if (v.len() > 3) {
                 return format!("{}, ... +{}", v.iter().take(3).map(|i| &i.name).join(", "), v.len()-3);
@@ -72,7 +81,8 @@ impl GetIssuesCommand {
         }
 
         table.set_titles(row![
-            format!("{}{}id{}", style::Bold, color::Fg(color::Blue), style::Reset),
+            format!("{}{}id{}", style::Bold, color::Fg(color::White), style::Reset),
+            format!("{}{}org/name{}", style::Bold, color::Fg(color::Blue), style::Reset),
             format!("{}{}title{}", style::Bold, color::Fg(color::Magenta), style::Reset),
             format!("{}{}creator{}", style::Bold, color::Fg(color::Blue), style::Reset),
             format!("{}{}state{}", style::Bold, color::Fg(color::Red), style::Reset),
@@ -81,7 +91,8 @@ impl GetIssuesCommand {
         ]);
         for e in issues.iter() {
             table.add_row(row![
-                format!("{}{}{}", color::Fg(color::LightBlue), e.number, style::Reset),
+                format!("{}{}{}", color::Fg(color::White), e.number, style::Reset),
+                format!("{}{}{}", color::Fg(color::LightBlue), extract_from_url(&e.repository_url), style::Reset),
                 format!("{}{}{}", color::Fg(color::Magenta), e.title, style::Reset),
                 format!("{}{}{}", color::Fg(color::LightBlue), e.user.login, style::Reset),
                 format!("{}{}{}", color::Fg(color::LightRed), e.state, style::Reset),

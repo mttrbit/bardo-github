@@ -55,7 +55,6 @@ pub fn run() {
             ("issue", Some(issue_matches)) => match issue_matches.subcommand() {
                 ("ls", Some(ls_matches)) => match ls_matches.subcommand() {
                     ("", None) => {
-                        println!("list all open issues");
                         let context = BardoContext::init().unwrap();
                         let access_token = &context
                             .credentials()
