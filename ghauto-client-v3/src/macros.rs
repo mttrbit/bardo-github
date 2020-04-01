@@ -197,7 +197,7 @@ macro_rules! exec {
                 let status: StatusCode = StatusCode::from(res.status());
                 match res.json() {
                     Ok(d) => Ok((headers, status, d)),
-                    Err(_) => Ok((headers, status, None)),
+                    Err(e) =>  Ok((headers, status, None)),
                 }
             }
         }

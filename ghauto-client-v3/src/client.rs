@@ -85,6 +85,9 @@ impl<'g> GetQueryBuilder<'g> {
 
     /// Query the repos endpoint
     func_client!(repos, crate::repos::get::Repos<'g>);
+
+    /// Query the issues endpoint
+    func_client!(issues, crate::issues::get::Issues<'g>);
 }
 
 // exec!(Github);

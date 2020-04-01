@@ -1,3 +1,5 @@
+// #![recursion_limit="4096"]
+
 #[macro_use]
 extern crate serde_derive;
 extern crate clap;
@@ -9,6 +11,7 @@ extern crate ghauto_config as config;
 extern crate serde;
 extern crate serde_json;
 extern crate toml;
+extern crate itertools;
 
 use clap::App;
 
@@ -17,6 +20,7 @@ use config::context::BardoContext;
 
 pub mod commands;
 
+use commands::get_issues::GetIssuesCommand;
 use commands::get_labels::GetLabelsCommand;
 use commands::users::Command;
 
@@ -52,6 +56,18 @@ pub fn run() {
                 ("ls", Some(ls_matches)) => match ls_matches.subcommand() {
                     ("", None) => {
                         println!("list all open issues");
+                        let context = BardoContext::init().unwrap();
+                        let access_token = &context
+                            .credentials()
+                            .profiles()
+                            .get("default")
+                            .unwrap()
+                            .access_token()
+                            .unwrap()
+                            .0;
+                        let gh = Github::new(access_token);
+
+                        GetIssuesCommand::new(context, gh).run();
                     }
                     ("", Some(_)) => {
                         println!("ls subcommands");
