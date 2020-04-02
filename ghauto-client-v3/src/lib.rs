@@ -20,6 +20,7 @@ extern crate tokio;
 extern crate webbrowser;
 extern crate dirs_sys;
 extern crate toml;
+extern crate regex;
 
 extern crate ghauto_config;
 
@@ -30,6 +31,7 @@ mod util;
 pub mod client;
 pub mod errors;
 pub mod gh_auth;
+pub mod headers;
 
 pub mod users;
 pub mod repos;

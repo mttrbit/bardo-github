@@ -36,14 +36,14 @@ macro_rules! from {
                                     .url()
                                     .query()
                                     .is_some() { "&" } else { "?" };
-                            hyper::Uri::from_str(
+                            reqwest::Url::from_str(
                                 &format!("{}{}{}={}",
                                     req.get_mut().url(),
                                     sep,
                                     $e1,
                                     param
                                 )
-                            ).chain_err(|| "Failed to parse Url")
+                            ).map_err(|_| "Failed to parse Url")
                         });
                     match url {
                         Ok(u) => {
@@ -51,7 +51,7 @@ macro_rules! from {
                             f.request = Ok(req);
                         },
                         Err(e) => {
-                            f.request = Err(e);
+                            f.request = Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "Failed to parse Url")));
                         }
                     }
 
@@ -197,7 +197,7 @@ macro_rules! exec {
                 let status: StatusCode = StatusCode::from(res.status());
                 match res.json() {
                     Ok(d) => Ok((headers, status, d)),
-                    Err(e) =>  Ok((headers, status, None)),
+                    Err(_) =>  Ok((headers, status, None)),
                 }
             }
         }
