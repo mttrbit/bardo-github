@@ -77,7 +77,7 @@ impl<'a> IssuesPrinter<'a> {
 		    return IssuesPrinter::format_duration(ago.num_hours()/720, "month");
 	    }
 
-	    return IssuesPrinter::format_duration(ago.num_hours()/262800, "year")
+	    IssuesPrinter::format_duration(ago.num_hours()/262800, "year")
     }
 
     fn print_last_updated(now: &DateTime<Utc>, updated_at: &DateTime<FixedOffset>) -> String {
