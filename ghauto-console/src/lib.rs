@@ -12,7 +12,6 @@ extern crate itertools;
 extern crate serde;
 extern crate serde_json;
 extern crate toml;
-extern crate reqwest;
 extern crate chrono;
 
 use clap::App;
@@ -21,6 +20,7 @@ use client::client::Github;
 use config::context::BardoContext;
 
 pub mod commands;
+pub mod display;
 
 use commands::issues::get::GetIssuesCommand;
 use commands::labels::get::GetLabelsCommand;
