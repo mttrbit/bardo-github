@@ -15,6 +15,7 @@ extern crate toml;
 extern crate chrono;
 
 use clap::App;
+use clap::Arg;
 
 use client::client::Github;
 use config::context::BardoContext;
@@ -37,7 +38,14 @@ pub fn run() {
                 .subcommand(
                     App::new("issue")
                         .about("helpers for issues issues")
-                        .subcommand(App::new("ls").about("iterates over all open issues")),
+                        .subcommand(App::new("ls")
+                                    .about("iterates over all open issues")
+                                    .arg(Arg::with_name("all")
+                                         .short('a')
+                                         .long("all")
+                                         .required(false)
+                                         .help("fetches all available issues"))
+                        ),
                 )
                 .subcommand(App::new("project").about("projects and more"))
                 .subcommand(
@@ -71,7 +79,13 @@ pub fn run() {
         ("gh", Some(gh_matches)) => match gh_matches.subcommand() {
             ("issue", Some(issue_matches)) => match issue_matches.subcommand() {
                 ("ls", Some(ls_matches)) => match ls_matches.subcommand() {
-                    ("", None) => GetIssuesCommand::new(context, gh).run(),
+                    ("", None) => {
+                        let mut args = Vec::new();
+                        if ls_matches.is_present("all") {
+                            args.push("all");
+                        }
+                        GetIssuesCommand::new(context, gh).run(&args)
+                    },
                     ("", Some(_)) => {
                         println!("ls subcommands");
                     }

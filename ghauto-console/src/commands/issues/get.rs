@@ -92,7 +92,7 @@ impl GetIssuesCommand {
             .execute::<Vec<Issue>>()
     }
 
-    pub fn run(&self) {
+    pub fn run(&self, args: &Vec<&str>) {
         let (headers, _, res) = self
             .fetch_open_issues("crvshlab", "ciot-backoffice")
             .unwrap();
@@ -103,7 +103,8 @@ impl GetIssuesCommand {
         let num_fetched_issues = issues_mut.len();
         let num_total_issues = repo.open_issues_count;
 
-        let print_all = false;
+        // println!("repos {:#?}", self.context.config().get_profiles()["default"].repositories());
+        let print_all = args.contains(&"all");
         println!("");
         if print_all == false {
             println!(

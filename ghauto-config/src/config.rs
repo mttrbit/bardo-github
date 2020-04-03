@@ -166,7 +166,11 @@ impl Configuration {
 }
 
 impl BardoConfig {
-   pub fn read_from<F>(reader: F) -> Result<Self>
+    pub fn get_profiles(&self) -> &HashMap<String, Configuration> {
+        &self.profiles
+    }
+
+    pub fn read_from<F>(reader: F) -> Result<Self>
     where
         F: Fn() -> Result<Value>,
     {
