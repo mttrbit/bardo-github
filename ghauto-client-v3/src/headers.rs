@@ -4,14 +4,16 @@ use std::collections::HashMap;
 
 use regex::Regex;
 
+pub type Links = HashMap<String, HashMap<String, String>>;
+
 /// Extract however many requests the authenticated user can
 /// make from the Headers
-pub fn link(head: &HeaderMap) -> Option<HashMap<String, HashMap<String, String>>> {
+pub fn link(head: &HeaderMap) -> Option<Links> {
     head.get("link").map(|l| parse(l.to_str().unwrap_or("")))
 }
 
-fn parse(link_header: &str) -> HashMap<String, HashMap<String, String>> {
-    let mut result: HashMap<String, HashMap<String, String>> = HashMap::new();
+fn parse(link_header: &str) -> Links {
+    let mut result: Links = HashMap::new();
     let re = Regex::new(r#"[<>"\s]"#).unwrap();
     let preprocessed = re.replace_all(link_header, "");
     let splited = preprocessed.split(',');
