@@ -92,73 +92,79 @@ impl GetIssuesCommand {
             .execute::<Vec<Issue>>()
     }
 
-    pub fn run(&self, args: &Vec<&str>) {
-        let print_all = args.contains(&"ALL");
-        let repositories = self.context.config().get_profiles()["default"].repositories();
-        for r in repositories.iter() {
-            match (r.org(), r.name()) {
-                (o, Some(n)) => {
-                    let org = &o.0;
-                    let name = &n.0;
-
-                    let (headers, _, res) = self
-                        .fetch_open_issues(org, name)
-                        .unwrap();
-                    let (_, _, repo_res) =
-                        self.fetch_repo_data(org, name).unwrap();
-                    let mut h = headers;
-                    let repo = repo_res.unwrap();
-                    let mut issues_mut: Vec<Issue> = res.unwrap();
-                    let num_fetched_issues = issues_mut.len();
-                    let num_total_issues = repo.open_issues_count;
-
-                    println!("");
-                    if print_all == false {
-                        println!(
-                            "Showing {} of {} open issues in {}",
-                            num_fetched_issues, num_total_issues, repo.full_name
-                        );
-                    } else {
-                        fn get_key_next(
-                            links: client::headers::Links,
-                        ) -> Option<HashMap<String, String>> {
-                            links.get("next").cloned()
-                        }
-
-                        fn get_key_page(next: HashMap<String, String>) -> Option<String> {
-                            next.get("page").cloned()
-                        }
-                        loop {
-                            let page = client::headers::link(&h)
-                                .and_then(get_key_next)
-                                .and_then(get_key_page);
-                            if page.is_some() {
-                                let (headers, _, res) = self
-                                    .fetch_open_issues_with_pages(
-                                        org,
-                                        name,
-                                        &page.unwrap(),
-                                    )
-                                    .unwrap();
-                                issues_mut.append(res.unwrap().as_mut());
-                                h = headers;
-                            } else {
-                                break;
-                            }
-                        }
-                        println!(
-                            "Showing {} open issues in {}",
-                            num_total_issues, repo.full_name
-                        );
-                    }
-
-                    println!("");
-
-                    issues_mut.to_std_out();
-                }
-                (_, _) => (),
+    pub fn run(&self, args: &Vec<Vec<&str>>) {
+        let mut print_all = false;
+        let mut print_single_repo = false;
+        let mut org = "";
+        let mut name = "";
+        for v in args.iter() {
+           if v.contains(&"ALL") { print_all = true; }
+            if v.contains(&"REPO") {
+                print_single_repo = true;
+                let mut split: std::str::Split<&str> = v[1].split("/");
+                org = split.next().expect("organisation missing");
+                name = split.next().expect("name missing");
             }
         }
+        if print_single_repo {
+            self.fetch_issues(org, name, print_all);
+        } else {
+            let repositories = self.context.config().get_profiles()["default"].repositories();
+            for r in repositories.iter() {
+                match (r.org(), r.name()) {
+                    (o, Some(n)) => self.fetch_issues(&o.0, &n.0, print_all),
+                    (_, _) => (),
+                };
+            }
+        }
+    }
+
+    fn fetch_issues(&self, org: &str, name: &str, b_print_all: bool) {
+        let (headers, _, res) = self.fetch_open_issues(org, name).unwrap();
+        let (_, _, repo_res) = self.fetch_repo_data(org, name).unwrap();
+        let mut h = headers;
+        let repo = repo_res.unwrap();
+        let mut issues_mut: Vec<Issue> = res.unwrap();
+        let num_fetched_issues = issues_mut.len();
+        let num_total_issues = repo.open_issues_count;
+
+        println!("");
+        if b_print_all == false {
+            println!(
+                "Showing {} of {} open issues in {}",
+                num_fetched_issues, num_total_issues, repo.full_name
+            );
+        } else {
+            fn get_key_next(links: client::headers::Links) -> Option<HashMap<String, String>> {
+                links.get("next").cloned()
+            }
+
+            fn get_key_page(next: HashMap<String, String>) -> Option<String> {
+                next.get("page").cloned()
+            }
+            loop {
+                let page = client::headers::link(&h)
+                    .and_then(get_key_next)
+                    .and_then(get_key_page);
+                if page.is_some() {
+                    let (headers, _, res) = self
+                        .fetch_open_issues_with_pages(org, name, &page.unwrap())
+                        .unwrap();
+                    issues_mut.append(res.unwrap().as_mut());
+                    h = headers;
+                } else {
+                    break;
+                }
+            }
+            println!(
+                "Showing {} open issues in {}",
+                num_total_issues, repo.full_name
+            );
+        }
+
+        println!("");
+
+        issues_mut.to_std_out();
     }
 }
 

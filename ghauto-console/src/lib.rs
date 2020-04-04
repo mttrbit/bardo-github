@@ -31,7 +31,7 @@ pub fn run() {
             (version: "0.0.1")
             (author: "Sebastian Kaiser")
             (about: "The caretaker provides automations and more")
-            (@arg PROFILE: -p --profile +takes_value "sets profile to use")
+            (@arg PROFILE: -p --profile "sets profile to use")
             (@subcommand gh =>
              (about: "repository automations for Github")
              (@subcommand issue =>
@@ -39,7 +39,7 @@ pub fn run() {
               (@subcommand ls =>
                (about: "iterates over open issues")
                (@arg ALL: -a --all "fetches all issues from all registered projects")
-               (@arg REPO: -r --repo "fetches all issues from single project")
+               (@arg REPO: -r --repo +takes_value "fetches all issues from single project")
               )
              )
              (@subcommand project =>
@@ -72,13 +72,25 @@ pub fn run() {
         .0;
     let gh = Github::new(access_token);
 
-    let all_args = vec!["ALL"];
+    let all_args = vec!["ALL", "REPO"];
 
-    fn get_args<'a>(matches: &ArgMatches, all_args: &Vec<&'a str>) -> Vec<&'a str> {
+    fn get_args<'a>(matches: &'a ArgMatches, all_args: &Vec<&'a str>) -> Vec<Vec<&'a str>> {
         let mut args = Vec::new();
         for a in all_args.iter() {
             if matches.is_present(*a) {
-                args.push(*a);
+                match matches.value_of(*a) {
+                    Some(val) => {
+                        let mut vals = Vec::new();
+                        vals.push(*a);
+                        vals.push(val);
+                        args.push(vals);
+                    }
+                    None => {
+                        let mut vals = Vec::new();
+                        vals.push(*a);
+                        args.push(vals);
+                    },
+                }
             }
         }
         args
