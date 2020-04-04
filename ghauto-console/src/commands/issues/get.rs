@@ -104,7 +104,7 @@ impl GetIssuesCommand {
         let num_total_issues = repo.open_issues_count;
 
         // println!("repos {:#?}", self.context.config().get_profiles()["default"].repositories());
-        let print_all = args.contains(&"all");
+        let print_all = args.contains(&"ALL");
         println!("");
         if print_all == false {
             println!(
