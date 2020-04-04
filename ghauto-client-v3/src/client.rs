@@ -1,10 +1,8 @@
-use hyper::header::{HeaderName, HeaderValue, IF_NONE_MATCH};
-use hyper::{Body, HeaderMap, Response, StatusCode};
+use hyper::header::{HeaderName, HeaderValue};
+use hyper::{HeaderMap, StatusCode};
 
 use reqwest::blocking::{Client, Request};
 use reqwest::{Url, Method};
-// use crate::futures::TryFutureExt;
-use bytes::buf::ext::BufExt;
 use serde::de::DeserializeOwned;
 
 use std::cell::RefCell;

@@ -1,5 +1,4 @@
-use reqwest::header::{HeaderMap, HeaderValue};
-use std::str::FromStr;
+use reqwest::header::HeaderMap;
 use std::collections::HashMap;
 
 use regex::Regex;

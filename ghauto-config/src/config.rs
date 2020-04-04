@@ -4,7 +4,6 @@ use toml::Value;
 use std::path::PathBuf;
 
 use crate::file::config_dir;
-use crate::profile::profile;
 
 pub use io::Result;
 

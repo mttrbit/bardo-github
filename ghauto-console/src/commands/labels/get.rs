@@ -2,14 +2,14 @@ use client::client::{Executor, Github};
 use config::context::BardoContext;
 
 pub struct GetLabelsCommand {
-    context: BardoContext,
+    _context: BardoContext,
     gh: Github,
 }
 
 impl GetLabelsCommand {
     pub fn new(ctx: BardoContext, gh: Github) -> Self {
         Self {
-            context: ctx,
+            _context: ctx,
             gh: gh,
         }
     }

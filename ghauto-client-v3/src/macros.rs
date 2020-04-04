@@ -50,7 +50,7 @@ macro_rules! from {
                             *req.get_mut().url_mut() = u;
                             f.request = Ok(req);
                         },
-                        Err(e) => {
+                        Err(_) => {
                             f.request = Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "Failed to parse Url")));
                         }
                     }
@@ -133,7 +133,7 @@ macro_rules! from {
 
                 let client = Client::new();
 
-                let res = client.execute(request.try_clone().unwrap()).and_then(|req| {
+                let res = client.execute(request.try_clone().unwrap()).and_then(|_| {
                     let token = String::from("token ") + &gh.token;
                     Ok((request, HeaderValue::from_str(&token).unwrap()))
                 });
@@ -291,10 +291,8 @@ macro_rules! imports {
         use crate::util::url_join;
 
         use reqwest::blocking::{Client, Request};
-        use reqwest::{Url, Method};
-        use bytes::buf::ext::BufExt;
 
-        use hyper::{Body, HeaderMap, Response, StatusCode};
+        use hyper::{HeaderMap, StatusCode};
         use serde::de::DeserializeOwned;
 
         use std::cell::RefCell;

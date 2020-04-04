@@ -1,10 +1,8 @@
-use serde::de::DeserializeOwned;
-
 use client::client::{Executor, Github};
 use config::context::BardoContext;
 
 use termion::{color, style};
-use prettytable::{Table, Row, Cell, format};
+use prettytable::{Table, format};
 
 #[derive(Deserialize, Debug)]
 pub struct Email {
@@ -13,20 +11,20 @@ pub struct Email {
 }
 
 pub struct Command {
-    context: BardoContext,
+    _context: BardoContext,
     gh: Github,
 }
 
 impl Command {
     pub fn new(ctx: BardoContext, gh: Github) -> Self {
         Self {
-            context: ctx,
+            _context: ctx,
             gh: gh,
         }
     }
 
     pub fn run(&self) {
-        let (headers, status_code, res) = self
+        let (_, _, res) = self
             .gh
             .get()
             .user()

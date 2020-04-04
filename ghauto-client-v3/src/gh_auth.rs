@@ -5,7 +5,6 @@ use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope,
     TokenResponse, TokenUrl,
 };
-use std::env;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use oauth2::url::Url;
@@ -37,7 +36,7 @@ pub fn github_authorize(client_id: Option<String>, client_secret: Option<String>
         .add_scope(Scope::new("user:email".to_string()))
         .url();
 
-    webbrowser::open(&authorize_url.to_string());
+    let _ = webbrowser::open(&authorize_url.to_string());
 
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
     for stream in listener.incoming() {

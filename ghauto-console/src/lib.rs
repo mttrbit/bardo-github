@@ -40,6 +40,7 @@ pub fn run() {
                (about: "iterates over open issues")
                (@arg ALL: -a --all "fetches all issues from all registered projects")
                (@arg REPO: -r --repo +takes_value "fetches all issues from single project")
+               (@arg FORMAT: -f --format +takes_value "define the print format")
               )
              )
              (@subcommand project =>
@@ -49,6 +50,10 @@ pub fn run() {
               (about: "helpers for dealing with repositories")
               (@subcommand ls =>
                (about: "list all repositories as defined in config")
+              )
+              (@subcommand new =>
+               (about: "create a new repository and add it to your profile")
+               (@arg REPO: -r --repo +takes_value "name of teh repository you want to create. format: organization/name")
               )
              )
              (@subcommand check =>
@@ -72,7 +77,7 @@ pub fn run() {
         .0;
     let gh = Github::new(access_token);
 
-    let all_args = vec!["ALL", "REPO"];
+    let all_args = vec!["ALL", "REPO", "ORG", "NAME", "FORMAT"];
 
     fn get_args<'a>(matches: &'a ArgMatches, all_args: &Vec<&'a str>) -> Vec<Vec<&'a str>> {
         let mut args = Vec::new();
@@ -105,7 +110,7 @@ pub fn run() {
                 }
                 _ => unreachable!(),
             },
-            ("project", Some(project_matches)) => {
+            ("project", Some(_project_matches)) => {
                 println!("project cmds");
             }
             ("repo", Some(repo_matches)) => match repo_matches.subcommand() {
@@ -115,7 +120,7 @@ pub fn run() {
                 }
                 _ => unreachable!(),
             },
-            ("check", Some(check_matches)) => {
+            ("check", Some(_check_matches)) => {
                 println!("check cmds");
             }
             _ => unreachable!(),

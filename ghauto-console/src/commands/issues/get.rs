@@ -39,6 +39,8 @@ pub struct GetIssuesCommand {
     gh: Github,
 }
 
+pub type HttpResponse<T> = (HeaderMap, StatusCode, Option<T>);
+
 impl GetIssuesCommand {
     pub fn new(ctx: BardoContext, gh: Github) -> Self {
         Self {
@@ -51,7 +53,7 @@ impl GetIssuesCommand {
         &self,
         owner: &str,
         repo: &str,
-    ) -> Result<(HeaderMap, StatusCode, Option<Repo>)> {
+    ) -> Result<HttpResponse<Repo>> {
         self.gh
             .get()
             .repos()
@@ -65,14 +67,13 @@ impl GetIssuesCommand {
         &self,
         owner: &str,
         repo: &str,
-    ) -> Result<(HeaderMap, StatusCode, Option<Vec<Issue>>)> {
+    ) -> Result<HttpResponse<Vec<Issue>>> {
         self.gh
             .get()
             .repos()
             .owner(owner)
             .repo(repo)
             .issues()
-            // .execute::<serde_json::Value>()
             .execute::<Vec<Issue>>()
     }
 
@@ -81,7 +82,7 @@ impl GetIssuesCommand {
         owner: &str,
         repo: &str,
         page: &str,
-    ) -> Result<(HeaderMap, StatusCode, Option<Vec<Issue>>)> {
+    ) -> Result<HttpResponse<Vec<Issue>>> {
         self.gh
             .get()
             .repos()
@@ -98,7 +99,9 @@ impl GetIssuesCommand {
         let mut org = "";
         let mut name = "";
         for v in args.iter() {
-           if v.contains(&"ALL") { print_all = true; }
+            if v.contains(&"ALL") {
+                print_all = true;
+            }
             if v.contains(&"REPO") {
                 print_single_repo = true;
                 let mut split: std::str::Split<&str> = v[1].split("/");
@@ -135,17 +138,8 @@ impl GetIssuesCommand {
                 num_fetched_issues, num_total_issues, repo.full_name
             );
         } else {
-            fn get_key_next(links: client::headers::Links) -> Option<HashMap<String, String>> {
-                links.get("next").cloned()
-            }
-
-            fn get_key_page(next: HashMap<String, String>) -> Option<String> {
-                next.get("page").cloned()
-            }
             loop {
-                let page = client::headers::link(&h)
-                    .and_then(get_key_next)
-                    .and_then(get_key_page);
+                let page = self.read_page_from_link_header(&h);
                 if page.is_some() {
                     let (headers, _, res) = self
                         .fetch_open_issues_with_pages(org, name, &page.unwrap())
@@ -165,6 +159,20 @@ impl GetIssuesCommand {
         println!("");
 
         issues_mut.to_std_out();
+    }
+
+    fn read_page_from_link_header(&self, headers: &HeaderMap) -> Option<String> {
+        fn get_key_next(links: client::headers::Links) -> Option<HashMap<String, String>> {
+            links.get("next").cloned()
+        }
+
+        fn get_key_page(next: HashMap<String, String>) -> Option<String> {
+            next.get("page").cloned()
+        }
+
+        client::headers::link(&headers)
+            .and_then(get_key_next)
+            .and_then(get_key_page)
     }
 }
 
