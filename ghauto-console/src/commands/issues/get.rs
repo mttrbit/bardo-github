@@ -1,15 +1,15 @@
+use crate::display::FmtDuration;
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
-use crate::display::FmtDuration;
 
 use chrono::{DateTime, Duration, Utc};
 use itertools::Itertools;
 use prettytable::{format, Table};
 use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use termion::{color, style};
-use std::collections::HashMap;
 
 #[derive(Deserialize, Debug)]
 pub struct IssueLabel {
@@ -93,57 +93,72 @@ impl GetIssuesCommand {
     }
 
     pub fn run(&self, args: &Vec<&str>) {
-        let (headers, _, res) = self
-            .fetch_open_issues("crvshlab", "ciot-backoffice")
-            .unwrap();
-        let (_, _, repo_res) = self.fetch_repo_data("crvshlab", "ciot-backoffice").unwrap();
-        let mut h = headers;
-        let repo = repo_res.unwrap();
-        let mut issues_mut: Vec<Issue> = res.unwrap();
-        let num_fetched_issues = issues_mut.len();
-        let num_total_issues = repo.open_issues_count;
-
-        // println!("repos {:#?}", self.context.config().get_profiles()["default"].repositories());
         let print_all = args.contains(&"ALL");
-        println!("");
-        if print_all == false {
-            println!(
-                "Showing {} of {} open issues in {}",
-                num_fetched_issues, num_total_issues, repo.full_name
-            );
-        } else {
-            fn get_key_next(
-                links: client::headers::Links,
-            ) -> Option<HashMap<String, String>> {
-                links.get("next").cloned()
-            }
+        let repositories = self.context.config().get_profiles()["default"].repositories();
+        for r in repositories.iter() {
+            match (r.org(), r.name()) {
+                (o, Some(n)) => {
+                    let org = &o.0;
+                    let name = &n.0;
 
-            fn get_key_page(next: HashMap<String, String>) -> Option<String> {
-                next.get("page").cloned()
-            }
-            loop {
-                let page = client::headers::link(&h)
-                    .and_then(get_key_next)
-                    .and_then(get_key_page);
-                if page.is_some() {
                     let (headers, _, res) = self
-                        .fetch_open_issues_with_pages("crvshlab", "ciot-backoffice", &page.unwrap())
+                        .fetch_open_issues(org, name)
                         .unwrap();
-                    issues_mut.append(res.unwrap().as_mut());
-                    h = headers;
-                } else {
-                    break;
+                    let (_, _, repo_res) =
+                        self.fetch_repo_data(org, name).unwrap();
+                    let mut h = headers;
+                    let repo = repo_res.unwrap();
+                    let mut issues_mut: Vec<Issue> = res.unwrap();
+                    let num_fetched_issues = issues_mut.len();
+                    let num_total_issues = repo.open_issues_count;
+
+                    println!("");
+                    if print_all == false {
+                        println!(
+                            "Showing {} of {} open issues in {}",
+                            num_fetched_issues, num_total_issues, repo.full_name
+                        );
+                    } else {
+                        fn get_key_next(
+                            links: client::headers::Links,
+                        ) -> Option<HashMap<String, String>> {
+                            links.get("next").cloned()
+                        }
+
+                        fn get_key_page(next: HashMap<String, String>) -> Option<String> {
+                            next.get("page").cloned()
+                        }
+                        loop {
+                            let page = client::headers::link(&h)
+                                .and_then(get_key_next)
+                                .and_then(get_key_page);
+                            if page.is_some() {
+                                let (headers, _, res) = self
+                                    .fetch_open_issues_with_pages(
+                                        org,
+                                        name,
+                                        &page.unwrap(),
+                                    )
+                                    .unwrap();
+                                issues_mut.append(res.unwrap().as_mut());
+                                h = headers;
+                            } else {
+                                break;
+                            }
+                        }
+                        println!(
+                            "Showing {} open issues in {}",
+                            num_total_issues, repo.full_name
+                        );
+                    }
+
+                    println!("");
+
+                    issues_mut.to_std_out();
                 }
+                (_, _) => (),
             }
-            println!(
-                "Showing {} open issues in {}",
-                num_total_issues, repo.full_name
-            );
         }
-
-        println!("");
-
-        issues_mut.to_std_out();
     }
 }
 

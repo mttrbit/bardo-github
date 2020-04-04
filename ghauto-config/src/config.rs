@@ -137,8 +137,8 @@ impl Configuration {
         &self.clone_path
     }
 
-    pub fn repositories(&self) -> &Repositories {
-        &self.repositories
+    pub fn repositories(&self) -> &Vec<Repository> {
+        &self.repositories.0
     }
 
     pub fn repositories_mut(&mut self) -> &mut Repositories {

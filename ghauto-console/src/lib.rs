@@ -38,7 +38,8 @@ pub fn run() {
               (about: "helpers for dealing with issues")
               (@subcommand ls =>
                (about: "iterates over open issues")
-               (@arg ALL: -a --all "fetches all issues")
+               (@arg ALL: -a --all "fetches all issues from all registered projects")
+               (@arg REPO: -r --repo "fetches all issues from single project")
               )
              )
              (@subcommand project =>
@@ -47,11 +48,14 @@ pub fn run() {
              (@subcommand repo =>
               (about: "helpers for dealing with repositories")
               (@subcommand ls =>
-               (about "list all repositories as defined in config")
+               (about: "list all repositories as defined in config")
               )
              )
              (@subcommand check =>
               (about: "performs checks")
+             )
+             (@subcommand status =>
+              (about: "displays current status")
              )
             )
     )
