@@ -1,3 +1,4 @@
+use crate::cmd::{Command, FetchAll, HttpResponse};
 use crate::display::FmtDuration;
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
@@ -7,9 +8,9 @@ use itertools::Itertools;
 use prettytable::{format, Table};
 use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
-use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use termion::{color, style};
+use std::convert::TryInto;
 
 #[derive(Deserialize, Debug)]
 pub struct IssueLabel {
@@ -27,7 +28,7 @@ pub struct Issue {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Repo {
+pub struct Repository {
     full_name: String,
     has_projects: bool,
     has_wiki: bool,
@@ -39,58 +40,12 @@ pub struct GetIssuesCommand {
     gh: Github,
 }
 
-pub type HttpResponse<T> = (HeaderMap, StatusCode, Option<T>);
-
 impl GetIssuesCommand {
     pub fn new(ctx: BardoContext, gh: Github) -> Self {
         Self {
             context: ctx,
             gh: gh,
         }
-    }
-
-    fn fetch_repo_data(
-        &self,
-        owner: &str,
-        repo: &str,
-    ) -> Result<HttpResponse<Repo>> {
-        self.gh
-            .get()
-            .repos()
-            .owner(owner)
-            .repo(repo)
-            // .execute::<serde_json::Value>()
-            .execute::<Repo>()
-    }
-
-    fn fetch_open_issues(
-        &self,
-        owner: &str,
-        repo: &str,
-    ) -> Result<HttpResponse<Vec<Issue>>> {
-        self.gh
-            .get()
-            .repos()
-            .owner(owner)
-            .repo(repo)
-            .issues()
-            .execute::<Vec<Issue>>()
-    }
-
-    fn fetch_open_issues_with_pages(
-        &self,
-        owner: &str,
-        repo: &str,
-        page: &str,
-    ) -> Result<HttpResponse<Vec<Issue>>> {
-        self.gh
-            .get()
-            .repos()
-            .owner(owner)
-            .repo(repo)
-            .issues()
-            .page(page)
-            .execute::<Vec<Issue>>()
     }
 
     pub fn run(&self, args: &Vec<Vec<&str>>) {
@@ -123,33 +78,24 @@ impl GetIssuesCommand {
     }
 
     fn fetch_issues(&self, org: &str, name: &str, b_print_all: bool) {
-        let (headers, _, res) = self.fetch_open_issues(org, name).unwrap();
-        let (_, _, repo_res) = self.fetch_repo_data(org, name).unwrap();
-        let mut h = headers;
-        let repo = repo_res.unwrap();
-        let mut issues_mut: Vec<Issue> = res.unwrap();
-        let num_fetched_issues = issues_mut.len();
-        let num_total_issues = repo.open_issues_count;
+        let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd(&self.gh, org, name);
 
+        let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
+        let repo: Repository = repo_res.unwrap();
+        let num_total_issues = repo.open_issues_count;
+        let mut issues_mut: Vec<Issue>;
         println!("");
         if b_print_all == false {
+            let (_, _, res) = cmd.execute().unwrap();
+            issues_mut = res.unwrap();
+            let num_fetched_issues = issues_mut.len();
             println!(
                 "Showing {} of {} open issues in {}",
                 num_fetched_issues, num_total_issues, repo.full_name
             );
         } else {
-            loop {
-                let page = self.read_page_from_link_header(&h);
-                if page.is_some() {
-                    let (headers, _, res) = self
-                        .fetch_open_issues_with_pages(org, name, &page.unwrap())
-                        .unwrap();
-                    issues_mut.append(res.unwrap().as_mut());
-                    h = headers;
-                } else {
-                    break;
-                }
-            }
+            issues_mut = Vec::with_capacity(num_total_issues.try_into().unwrap());
+            cmd.fetch_all(issues_mut.as_mut());
             println!(
                 "Showing {} open issues in {}",
                 num_total_issues, repo.full_name
@@ -159,20 +105,6 @@ impl GetIssuesCommand {
         println!("");
 
         issues_mut.to_std_out();
-    }
-
-    fn read_page_from_link_header(&self, headers: &HeaderMap) -> Option<String> {
-        fn get_key_next(links: client::headers::Links) -> Option<HashMap<String, String>> {
-            links.get("next").cloned()
-        }
-
-        fn get_key_page(next: HashMap<String, String>) -> Option<String> {
-            next.get("page").cloned()
-        }
-
-        client::headers::link(&headers)
-            .and_then(get_key_next)
-            .and_then(get_key_page)
     }
 }
 
@@ -257,5 +189,65 @@ impl<'a> PrintStd for Issues<'a> {
             ]);
         }
         table.printstd();
+    }
+}
+
+pub struct FetchRepoCmd<'a>(pub &'a Github, pub &'a str, pub &'a str);
+
+impl<'a> Command<Repository> for FetchRepoCmd<'a> {
+    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<Repository>)> {
+        let result = self
+            .0
+            .get()
+            .repos()
+            .owner(self.1)
+            .repo(self.2)
+            .execute::<Repository>();
+
+        result
+    }
+}
+
+pub struct FetchOpenIssuesCmd<'a>(pub &'a Github, pub &'a str, pub &'a str);
+
+impl<'a> Command<Vec<Issue>> for FetchOpenIssuesCmd<'a> {
+    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<Vec<Issue>>)> {
+        let result = self
+            .0
+            .get()
+            .repos()
+            .owner(self.1)
+            .repo(self.2)
+            .issues()
+            .execute::<Vec<Issue>>();
+
+        result
+    }
+}
+
+impl<'a> FetchAll<Vec<Issue>> for FetchOpenIssuesCmd<'a> {
+    fn fetch_all(&self, issues_mut: & mut Vec<Issue>) {
+        let mut page = Some("1".to_string());
+
+        fn call(gh: &Github, owner: &str, name: &str, page: &str) -> Result<(HeaderMap, StatusCode, Option<Vec<Issue>>)> {
+            gh
+                .get()
+                .repos()
+                .owner(owner)
+                .repo(name)
+                .issues()
+                .page(page)
+                .execute::<Vec<Issue>>()
+        };
+
+        loop {
+            if page.is_some() {
+                let (headers, _, res) = call(self.0, self.1, self.2, &page.unwrap()).unwrap();
+                issues_mut.append(res.unwrap().as_mut());
+                page = self.read_page_from_link_header(&headers);
+            } else {
+                break;
+            }
+        }
     }
 }

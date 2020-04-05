@@ -3,9 +3,9 @@
 extern crate clap;
 #[macro_use]
 extern crate serde_derive;
-extern crate termion;
 #[macro_use]
 extern crate prettytable;
+extern crate termion;
 extern crate chrono;
 extern crate ghauto_client_v3 as client;
 extern crate ghauto_config as config;
@@ -20,6 +20,7 @@ use config::context::BardoContext;
 
 pub mod commands;
 pub mod display;
+pub mod cmd;
 
 use commands::issues::get::GetIssuesCommand;
 use commands::labels::get::GetLabelsCommand;
