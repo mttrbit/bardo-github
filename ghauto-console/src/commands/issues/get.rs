@@ -1,4 +1,4 @@
-use crate::cmd::{Command, FetchAll, HttpResponse};
+use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator};
 use crate::display::FmtDuration;
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
@@ -8,9 +8,9 @@ use itertools::Itertools;
 use prettytable::{format, Table};
 use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
+use std::convert::TryInto;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use termion::{color, style};
-use std::convert::TryInto;
 
 #[derive(Deserialize, Debug)]
 pub struct IssueLabel {
@@ -65,28 +65,31 @@ impl GetIssuesCommand {
             }
         }
         if print_single_repo {
-            self.fetch_issues(org, name, print_all);
+            self.get_issues(org, name, print_all);
         } else {
             let repositories = self.context.config().get_profiles()["default"].repositories();
             for r in repositories.iter() {
                 match (r.org(), r.name()) {
-                    (o, Some(n)) => self.fetch_issues(&o.0, &n.0, print_all),
+                    (o, Some(n)) => self.get_issues(&o.0, &n.0, print_all),
                     (_, _) => (),
                 };
             }
         }
     }
 
-    fn fetch_issues(&self, org: &str, name: &str, b_print_all: bool) {
-        let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd(&self.gh, org, name);
+    fn get_issues(&self, org: &str, name: &str, b_print_all: bool) {
+        let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd::new(&self.gh, org, name);
 
         let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
         let repo: Repository = repo_res.unwrap();
         let num_total_issues = repo.open_issues_count;
         let mut issues_mut: Vec<Issue>;
         println!("");
+
+        let mut iter = cmd.execute_iter().into_iter();
+
         if b_print_all == false {
-            let (_, _, res) = cmd.execute().unwrap();
+            let (_, _, res) = iter.next().unwrap().unwrap();
             issues_mut = res.unwrap();
             let num_fetched_issues = issues_mut.len();
             println!(
@@ -95,7 +98,11 @@ impl GetIssuesCommand {
             );
         } else {
             issues_mut = Vec::with_capacity(num_total_issues.try_into().unwrap());
-            cmd.fetch_all(issues_mut.as_mut());
+            for next in iter {
+                let (_, _, res) = next.unwrap();
+                issues_mut.append(res.unwrap().as_mut());
+            }
+
             println!(
                 "Showing {} open issues in {}",
                 num_total_issues, repo.full_name
@@ -208,46 +215,41 @@ impl<'a> Command<Repository> for FetchRepoCmd<'a> {
     }
 }
 
-pub struct FetchOpenIssuesCmd<'a>(pub &'a Github, pub &'a str, pub &'a str);
+pub struct FetchOpenIssuesCmd<'a> {
+    gh: &'a Github,
+    owner: &'a str,
+    name: &'a str,
+}
 
-impl<'a> Command<Vec<Issue>> for FetchOpenIssuesCmd<'a> {
-    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<Vec<Issue>>)> {
-        let result = self
-            .0
-            .get()
-            .repos()
-            .owner(self.1)
-            .repo(self.2)
-            .issues()
-            .execute::<Vec<Issue>>();
-
-        result
+impl<'a> FetchOpenIssuesCmd<'a> {
+    fn new(gh: &'a Github, owner: &'a str, name: &'a str) -> Self {
+        Self {
+            gh: gh,
+            owner: owner,
+            name: name,
+        }
     }
 }
 
-impl<'a> FetchAll<Vec<Issue>> for FetchOpenIssuesCmd<'a> {
-    fn fetch_all(&self, issues_mut: & mut Vec<Issue>) {
-        let mut page = Some("1".to_string());
-
-        fn call(gh: &Github, owner: &str, name: &str, page: &str) -> Result<(HeaderMap, StatusCode, Option<Vec<Issue>>)> {
-            gh
-                .get()
-                .repos()
-                .owner(owner)
-                .repo(name)
-                .issues()
-                .page(page)
-                .execute::<Vec<Issue>>()
-        };
-
-        loop {
-            if page.is_some() {
-                let (headers, _, res) = call(self.0, self.1, self.2, &page.unwrap()).unwrap();
-                issues_mut.append(res.unwrap().as_mut());
-                page = self.read_page_from_link_header(&headers);
-            } else {
-                break;
-            }
+impl<'a> IterableCommand<Vec<Issue>> for FetchOpenIssuesCmd<'a> {
+    fn execute_iter(&self) -> ResultIterator<Vec<Issue>> {
+        fn call<'a>(
+            gh: &'a Github,
+            owner: &'a str,
+            name: &'a str,
+        ) -> Box<dyn Fn(&str) -> Result<HttpResponse<Vec<Issue>>> + 'a> {
+            Box::new(move |page| {
+                gh.get()
+                    .repos()
+                    .owner(owner)
+                    .repo(name)
+                    .issues()
+                    .page(page)
+                    .execute::<Vec<Issue>>()
+            })
         }
+
+        let t = call(self.gh, self.owner, self.name);
+        ResultIterator::new(t, Some("1".to_string()))
     }
 }
