@@ -5,6 +5,7 @@ use config::context::BardoContext;
 
 use crate::commands::issues::get::GetIssuesCommand;
 use crate::commands::labels::get::GetLabelsCommand;
+use crate::commands::pulls::get::GetPullsCommand;
 use crate::commands::users::Command;
 
 enum CliOpts {
@@ -73,6 +74,15 @@ pub fn start() {
                (@arg REPO: -r --repo +takes_value "fetches all issues from single project")
                (@arg FORMAT: -f --format +takes_value "define the print format")
               )
+              (@subcommand status =>
+               (about: "displays a summary of issues")
+              )
+             )
+             (@subcommand pr =>
+              (about: "iterates over all repositories to display open pull requests")
+              (@subcommand ls =>
+               (about: "iterates over open pull requets")
+              )
              )
              (@subcommand project =>
               (about: "helpers for dealing with projects")
@@ -81,6 +91,10 @@ pub fn start() {
               (about: "helpers for dealing with repositories")
               (@subcommand ls =>
                (about: "list all repositories as defined in config")
+              )
+              (@subcommand apply =>
+               (about: "iterate over repositories and apply a command to each of them")
+               (@arg CMD: +required "the shell script to apply")
               )
               (@subcommand create =>
                (about: "create a new repository and add it to your profile")
@@ -106,7 +120,7 @@ pub fn start() {
 
     let default_profile = resolve_profile(&matches);
 
-    let context = BardoContext::init().unwrap();
+    let context = BardoContext::init(&default_profile).unwrap();
     let access_token = &context
         .credentials()
         .profiles()
@@ -128,6 +142,13 @@ pub fn start() {
                 }
                 _ => unreachable!(),
             },
+            ("pr", Some(pr_matches)) => match pr_matches.subcommand() {
+                ("ls", Some(ls_matches)) => {
+                    let args = get_args(ls_matches, &all_args);
+                    GetPullsCommand::new(context, gh).run(&args);
+                }
+                _ => unreachable!(),
+            }
             ("project", Some(_project_matches)) => {
                 println!("project cmds");
             }
@@ -135,6 +156,9 @@ pub fn start() {
                 ("create", Some(_)) => {
                     println!("repo cmds");
                     println!("push labels");
+                }
+                ("apply", Some(_)) => {
+                    println!("apply cmd to repo");
                 }
                 _ => unreachable!(),
             },

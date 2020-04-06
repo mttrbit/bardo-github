@@ -8,11 +8,20 @@ use crate::file::read_toml;
 pub use std::io::Result;
 
 pub struct BardoContext {
+    profile: String,
     credentials: BardoCredentials,
     config: BardoConfig,
 }
 
 impl BardoContext {
+
+    pub fn profile(&self) -> &String {
+        &self.profile
+    }
+
+    pub fn profile_mut(&mut self) -> &mut String {
+        &mut self.profile
+    }
 
     pub fn credentials(&self) -> &BardoCredentials {
         &self.credentials
@@ -22,7 +31,7 @@ impl BardoContext {
         &self.config
     }
 
-    pub fn init() -> Result<Self> {
+    pub fn init(profile: &str) -> Result<Self> {
         let toml_reader = |buf: PathBuf| read_toml(buf.as_path());
 
         let creds_reader = || credentials_file()
@@ -40,6 +49,7 @@ impl BardoContext {
             (Ok(a), Ok(b)) => Ok(Self {
                 credentials: a,
                 config: b,
+                profile: profile.to_string(),
             }),
             _ => Err(io::Error::new(io::ErrorKind::InvalidData, "error while initializing context")),
         }

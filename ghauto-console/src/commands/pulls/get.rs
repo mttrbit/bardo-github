@@ -13,34 +13,29 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use termion::{color, style};
 
 #[derive(Deserialize, Debug)]
-pub struct IssueLabel {
-    name: String,
-    color: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Issue {
-    number: i32,
-    title: String,
-    labels: Vec<IssueLabel>,
-    repository_url: String,
-    updated_at: String,
-}
-
-#[derive(Deserialize, Debug)]
 pub struct Repository {
     full_name: String,
-    has_projects: bool,
-    has_wiki: bool,
-    open_issues_count: u32,
 }
 
-pub struct GetIssuesCommand {
+#[derive(Deserialize, Debug)]
+pub struct Head {
+    label: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Pull {
+    number: i32,
+    title: String,
+    updated_at: String,
+    head: Head,
+}
+
+pub struct GetPullsCommand {
     context: BardoContext,
     gh: Github,
 }
 
-impl GetIssuesCommand {
+impl GetPullsCommand {
     pub fn new(ctx: BardoContext, gh: Github) -> Self {
         Self {
             context: ctx,
@@ -65,87 +60,68 @@ impl GetIssuesCommand {
             }
         }
         if print_single_repo {
-            self.get_issues(org, name, print_all);
+            self.get_pulls(org, name, print_all);
         } else {
             let profile = self.context.profile();
             let repositories = self.context.config().get_profiles()[profile].repositories();
             for r in repositories.iter() {
                 match (r.org(), r.name()) {
-                    (o, Some(n)) => self.get_issues(&o.0, &n.0, print_all),
+                    (o, Some(n)) => self.get_pulls(&o.0, &n.0, print_all),
                     (_, _) => (),
                 };
             }
         }
     }
 
-    fn get_issues(&self, org: &str, name: &str, b_print_all: bool) {
-        let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd::new(&self.gh, org, name);
+    fn get_pulls(&self, org: &str, name: &str, b_print_all: bool) {
+        let cmd: FetchOpenPullsCmd = FetchOpenPullsCmd::new(&self.gh, org, name);
         let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
         let repo: Repository = repo_res.unwrap();
-        let num_total_issues = repo.open_issues_count;
-        let mut issues_mut: Vec<Issue>;
+        let mut pulls_mut: Vec<Pull>;
         println!("");
 
         let mut iter = cmd.execute_iter().into_iter();
 
         if b_print_all == false {
             let (_, _, res) = iter.next().unwrap().unwrap();
-            issues_mut = res.unwrap();
-            let num_fetched_issues = issues_mut.len();
+            pulls_mut = res.unwrap();
+            let num_fetched_pulls = pulls_mut.len();
             println!(
-                "Showing {} of {} open issues in {}",
-                num_fetched_issues, num_total_issues, repo.full_name
+                "Showing {} open pull requests in {}",
+                num_fetched_pulls, repo.full_name
             );
         } else {
-            issues_mut = Vec::with_capacity(num_total_issues.try_into().unwrap());
+            pulls_mut = Vec::new();
             for next in iter {
                 let (_, _, res) = next.unwrap();
-                issues_mut.append(res.unwrap().as_mut());
+                pulls_mut.append(res.unwrap().as_mut());
             }
 
             println!(
-                "Showing {} open issues in {}",
-                num_total_issues, repo.full_name
+                "Showing {} open pull requests in {}",
+                pulls_mut.len(), repo.full_name
             );
         }
 
         println!("");
 
-        issues_mut.to_std_out();
+        pulls_mut.to_std_out();
     }
 }
 
-struct Issues<'a>(&'a Vec<Issue>);
+struct Pulls<'a>(&'a Vec<Pull>);
 
 trait PrintStd {
     fn to_std_out(&self);
 }
 
-impl<'a> PrintStd for Vec<Issue> {
+impl<'a> PrintStd for Vec<Pull> {
     fn to_std_out(&self) {
-        Issues(self).to_std_out();
+        Pulls(self).to_std_out();
     }
 }
 
-struct Label<'a>(&'a Vec<IssueLabel>);
-
-impl<'a> Display for Label<'a> {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let v = self.0;
-        if v.is_empty() {
-            return write!(f, "");
-        } else {
-            let ls = v.iter().take(3).map(|i| &i.name).join(", ");
-            if v.len() > 3 {
-                return write!(f, "({}, ...)", ls);
-            } else {
-                return write!(f, "({})", ls);
-            }
-        }
-    }
-}
-
-impl<'a> PrintStd for Issues<'a> {
+impl<'a> PrintStd for Pulls<'a> {
     fn to_std_out(&self) {
         let v = self.0;
         let mut table = Table::new();
@@ -165,34 +141,18 @@ impl<'a> PrintStd for Issues<'a> {
                 style::Reset
             ),
             format!(
-                "{}{}labels{}",
-                style::Bold,
-                color::Fg(color::White),
-                style::Reset
-            ),
-            format!(
-                "{}{}last update{}",
+                "{}{}label{}",
                 style::Bold,
                 color::Fg(color::White),
                 style::Reset
             ),
         ]);
 
-        let now = Utc::now();
         for e in v.iter() {
-            let labels = Label(&e.labels);
-            let dt_8601 = DateTime::parse_from_rfc3339(&e.updated_at).unwrap();
-            let ago: Duration = now.signed_duration_since(dt_8601);
             table.add_row(row![
                 format!("{}#{}{}", color::Fg(color::Green), e.number, style::Reset),
                 format!("{}{}{}", color::Fg(color::Magenta), e.title, style::Reset),
-                format!("{}{}{}", color::Fg(color::White), labels, style::Reset),
-                format!(
-                    "{}{}{}",
-                    color::Fg(color::White),
-                    FmtDuration::fuzzy_ago(ago),
-                    style::Reset
-                ),
+                format!("{}{}{}", color::Fg(color::White), e.head.label, style::Reset),
             ]);
         }
         table.printstd();
@@ -215,13 +175,13 @@ impl<'a> Command<Repository> for FetchRepoCmd<'a> {
     }
 }
 
-pub struct FetchOpenIssuesCmd<'a> {
+pub struct FetchOpenPullsCmd<'a> {
     gh: &'a Github,
     owner: &'a str,
     name: &'a str,
 }
 
-impl<'a> FetchOpenIssuesCmd<'a> {
+impl<'a> FetchOpenPullsCmd<'a> {
     fn new(gh: &'a Github, owner: &'a str, name: &'a str) -> Self {
         Self {
             gh: gh,
@@ -231,21 +191,21 @@ impl<'a> FetchOpenIssuesCmd<'a> {
     }
 }
 
-impl<'a> IterableCommand<Vec<Issue>> for FetchOpenIssuesCmd<'a> {
-    fn execute_iter(&self) -> ResultIterator<Vec<Issue>> {
+impl<'a> IterableCommand<Vec<Pull>> for FetchOpenPullsCmd<'a> {
+    fn execute_iter(&self) -> ResultIterator<Vec<Pull>> {
         fn call<'a>(
             gh: &'a Github,
             owner: &'a str,
             name: &'a str,
-        ) -> Box<dyn Fn(&str) -> Result<HttpResponse<Vec<Issue>>> + 'a> {
+        ) -> Box<dyn Fn(&str) -> Result<HttpResponse<Vec<Pull>>> + 'a> {
             Box::new(move |page| {
                 gh.get()
                     .repos()
                     .owner(owner)
                     .repo(name)
-                    .issues()
+                    .pulls()
                     .page(page)
-                    .execute::<Vec<Issue>>()
+                    .execute::<Vec<Pull>>()
             })
         }
 
