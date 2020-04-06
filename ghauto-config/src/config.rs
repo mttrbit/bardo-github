@@ -8,6 +8,10 @@ use crate::file::config_dir;
 pub use io::Result;
 
 #[derive(Debug)]
+pub struct UserName(pub String);
+#[derive(Debug)]
+pub struct UserEmail(pub Option<String>);
+#[derive(Debug)]
 pub struct Org(pub String);
 #[derive(Debug)]
 pub struct Name(pub String);
@@ -28,6 +32,8 @@ pub struct Repositories(pub Vec<Repository>);
 
 #[derive(Debug)]
 pub struct Configuration {
+    user_name: UserName,
+    user_email: UserEmail,
     clone_path: ClonePath,
     repositories: Repositories,
 }
@@ -132,6 +138,14 @@ impl Repositories {
 
 impl Configuration {
 
+    pub fn user_name(&self) -> &UserName {
+        &self.user_name
+    }
+
+    pub fn user_email(&self) -> &UserEmail {
+        &self.user_email
+    }
+
     pub fn clone_path(&self) -> &ClonePath {
         &self.clone_path
     }
@@ -149,11 +163,18 @@ impl Configuration {
         F: Fn() -> Result<Value>,
     {
         reader().and_then(|config| {
+            let user_name = config["user_name"].as_str().expect("field 'user_name' is missing");
+            let user_email = match config.get("user_email") {
+                Some(s) if !s.as_str().unwrap_or("").is_empty() => Some(s.as_str().unwrap().to_owned()),
+                _ => None,
+            };
             let clone_path = config["clone_path"].as_str().expect("field 'clone_path' is missing");
             let repositories = config.get("repositories").expect("field 'repositories' is missing");
 
             match Repositories::read_from(|| Ok(repositories.clone())) {
                 Ok(repos) => Ok(Self {
+                    user_name: UserName(user_name.to_string()),
+                    user_email: UserEmail(user_email),
                     clone_path: ClonePath(clone_path.to_string()),
                     repositories: repos,
 

@@ -7,7 +7,7 @@ use crate::commands::issues::get::GetIssuesCommand;
 use crate::commands::labels::get::GetLabelsCommand;
 use crate::commands::users::Command;
 
-enum CLI_OPTS {
+enum CliOpts {
     ALL,
     REPO,
     ORG,
@@ -84,7 +84,7 @@ pub fn start() {
               )
               (@subcommand create =>
                (about: "create a new repository and add it to your profile")
-               (@arg REPO: -r --repo +takes_value "name of the repository you want to create. format: organization/name")
+               (@arg REPO: +required "name of the repository you want to create. format: organization/name")
                (@arg DEFAULTS: -d --defaults "creates a new repository and sets defaults")
               )
              )
