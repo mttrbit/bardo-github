@@ -6,6 +6,7 @@ use config::context::BardoContext;
 use crate::commands::issues::get::GetIssuesCommand;
 use crate::commands::labels::get::GetLabelsCommand;
 use crate::commands::pulls::get::GetPullsCommand;
+use crate::commands::repo::clone::CloneRepoCommand;
 use crate::commands::users::Command;
 
 enum CliOpts {
@@ -92,6 +93,9 @@ pub fn start() {
               (@subcommand ls =>
                (about: "list all repositories as defined in config")
               )
+              (@subcommand clone =>
+               (about: "iterates over all repositories to clone them in clone_path")
+              )
               (@subcommand apply =>
                (about: "iterate over repositories and apply a command to each of them")
                (@arg CMD: +required "the shell script to apply")
@@ -156,6 +160,10 @@ pub fn start() {
                 ("create", Some(_)) => {
                     println!("repo cmds");
                     println!("push labels");
+                }
+                ("clone", Some(clone_matches)) => {
+                    let args = get_args(clone_matches, &all_args);
+                    CloneRepoCommand::new(context, gh).run(&args);
                 }
                 ("apply", Some(_)) => {
                     println!("apply cmd to repo");
