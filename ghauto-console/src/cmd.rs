@@ -83,3 +83,7 @@ pub fn read_page_from_link_header(headers: &HeaderMap) -> Option<String> {
         .and_then(get_key_next)
         .and_then(get_key_page)
 }
+
+pub trait PrintStd {
+    fn to_std_out(&self);
+}

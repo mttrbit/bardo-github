@@ -1,4 +1,5 @@
-use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator};
+use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator, PrintStd};
+use crate::commands::repo::get::{FetchRepoCmd, Repository};
 use crate::display::FmtDuration;
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
@@ -6,8 +7,6 @@ use config::context::BardoContext;
 use chrono::{DateTime, Duration, Utc};
 use itertools::Itertools;
 use prettytable::{format, Table};
-use reqwest::header::HeaderMap;
-use reqwest::StatusCode;
 use std::convert::TryInto;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use termion::{color, style};
@@ -25,14 +24,6 @@ pub struct Issue {
     labels: Vec<IssueLabel>,
     repository_url: String,
     updated_at: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Repository {
-    full_name: String,
-    has_projects: bool,
-    has_wiki: bool,
-    open_issues_count: u32,
 }
 
 pub struct GetIssuesCommand {
@@ -82,7 +73,8 @@ impl GetIssuesCommand {
         let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd::new(&self.gh, org, name);
         let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
         let repo: Repository = repo_res.unwrap();
-        let num_total_issues = repo.open_issues_count;
+        let full_name = repo.full_name();
+        let num_total_issues = *repo.open_issue_count();
         let mut issues_mut: Vec<Issue>;
         println!("");
 
@@ -94,7 +86,7 @@ impl GetIssuesCommand {
             let num_fetched_issues = issues_mut.len();
             println!(
                 "Showing {} of {} open issues in {}",
-                num_fetched_issues, num_total_issues, repo.full_name
+                num_fetched_issues, num_total_issues, full_name
             );
         } else {
             issues_mut = Vec::with_capacity(num_total_issues.try_into().unwrap());
@@ -105,7 +97,7 @@ impl GetIssuesCommand {
 
             println!(
                 "Showing {} open issues in {}",
-                num_total_issues, repo.full_name
+                num_total_issues, full_name
             );
         }
 
@@ -116,10 +108,6 @@ impl GetIssuesCommand {
 }
 
 struct Issues<'a>(&'a Vec<Issue>);
-
-trait PrintStd {
-    fn to_std_out(&self);
-}
 
 impl<'a> PrintStd for Vec<Issue> {
     fn to_std_out(&self) {
@@ -196,22 +184,6 @@ impl<'a> PrintStd for Issues<'a> {
             ]);
         }
         table.printstd();
-    }
-}
-
-pub struct FetchRepoCmd<'a>(pub &'a Github, pub &'a str, pub &'a str);
-
-impl<'a> Command<Repository> for FetchRepoCmd<'a> {
-    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<Repository>)> {
-        let result = self
-            .0
-            .get()
-            .repos()
-            .owner(self.1)
-            .repo(self.2)
-            .execute::<Repository>();
-
-        result
     }
 }
 

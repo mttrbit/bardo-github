@@ -1,21 +1,10 @@
-use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator};
-use crate::display::FmtDuration;
+use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator, PrintStd};
+use crate::commands::repo::get::{FetchRepoCmd, Repository};
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
 
-use chrono::{DateTime, Duration, Utc};
-use itertools::Itertools;
 use prettytable::{format, Table};
-use reqwest::header::HeaderMap;
-use reqwest::StatusCode;
-use std::convert::TryInto;
-use std::fmt::{Display, Formatter, Result as FmtResult};
 use termion::{color, style};
-
-#[derive(Deserialize, Debug)]
-pub struct Repository {
-    full_name: String,
-}
 
 #[derive(Deserialize, Debug)]
 pub struct Head {
@@ -77,8 +66,8 @@ impl GetPullsCommand {
         let cmd: FetchOpenPullsCmd = FetchOpenPullsCmd::new(&self.gh, org, name);
         let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
         let repo: Repository = repo_res.unwrap();
+        let full_name = repo.full_name();
         let mut pulls_mut: Vec<Pull>;
-        println!("");
 
         let mut iter = cmd.execute_iter().into_iter();
 
@@ -86,10 +75,15 @@ impl GetPullsCommand {
             let (_, _, res) = iter.next().unwrap().unwrap();
             pulls_mut = res.unwrap();
             let num_fetched_pulls = pulls_mut.len();
-            println!(
-                "Showing {} open pull requests in {}",
-                num_fetched_pulls, repo.full_name
-            );
+            if num_fetched_pulls > 0 {
+                println!(
+                    "Showing {} open pull requests in {}",
+                    num_fetched_pulls, full_name
+                );
+                println!("");
+            } else {
+                println!("There are no open pull requests in {}", full_name);
+            }
         } else {
             pulls_mut = Vec::new();
             for next in iter {
@@ -99,21 +93,17 @@ impl GetPullsCommand {
 
             println!(
                 "Showing {} open pull requests in {}",
-                pulls_mut.len(), repo.full_name
+                pulls_mut.len(), full_name
             );
-        }
 
-        println!("");
+            println!("");
+        }
 
         pulls_mut.to_std_out();
     }
 }
 
 struct Pulls<'a>(&'a Vec<Pull>);
-
-trait PrintStd {
-    fn to_std_out(&self);
-}
 
 impl<'a> PrintStd for Vec<Pull> {
     fn to_std_out(&self) {
@@ -156,22 +146,6 @@ impl<'a> PrintStd for Pulls<'a> {
             ]);
         }
         table.printstd();
-    }
-}
-
-pub struct FetchRepoCmd<'a>(pub &'a Github, pub &'a str, pub &'a str);
-
-impl<'a> Command<Repository> for FetchRepoCmd<'a> {
-    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<Repository>)> {
-        let result = self
-            .0
-            .get()
-            .repos()
-            .owner(self.1)
-            .repo(self.2)
-            .execute::<Repository>();
-
-        result
     }
 }
 
