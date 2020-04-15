@@ -90,7 +90,14 @@ impl ApplyCommand {
         }
     }
 
-    fn clone_repos() {}
+    fn clone_repo(path: &str, org: &str, name: &str) -> std::io::Result<std::process::ExitStatus> {
+        let ssh_url = format!("git@github.com:{}/{}.git", org, name);
+        std::process::Command::new("sh")
+            .current_dir(path)
+            .arg("-c")
+            .arg(format!("git clone {}", ssh_url))
+            .status()
+    }
 
     /// Create a vector of changed files.
     ///

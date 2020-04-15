@@ -34,6 +34,7 @@ impl Clone for Github {
 }
 
 new_type!(GetQueryBuilder);
+new_type!(PostQueryBuilder);
 new_type!(CustomQuery);
 exec!(CustomQuery);
 
@@ -88,15 +89,24 @@ impl<'g> GetQueryBuilder<'g> {
     func_client!(issues, crate::issues::get::Issues<'g>);
 }
 
+impl<'g> PostQueryBuilder<'g> {
+    func_client!(custom_endpoint, CustomQuery, endpoint_str);
+    func_client!(repos, crate::repos::post::Repos<'g>);
+}
+
 // exec!(Github);
 
 from!(
     @GetQueryBuilder
         => "GET"
+    @PostQueryBuilder
+        => "POST"
 );
 
 from!(
     @GetQueryBuilder
+        => CustomQuery
+    @PostQueryBuilder
         => CustomQuery
 );
 
