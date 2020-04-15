@@ -1,12 +1,13 @@
-use std::env;
 use clap::ArgMatches;
 use client::client::Github;
 use config::context::BardoContext;
+use std::env;
 
 use crate::commands::issues::get::GetIssuesCommand;
 use crate::commands::labels::get::GetLabelsCommand;
 use crate::commands::pulls::get::GetPullsCommand;
 use crate::commands::repo::clone::CloneRepoCommand;
+use crate::commands::repo::apply::ApplyCommand;
 use crate::commands::users::Command;
 
 enum CliOpts {
@@ -97,7 +98,11 @@ pub fn start() {
                (about: "iterates over all repositories to clone them in clone_path")
               )
               (@subcommand apply =>
-               (about: "iterate over repositories and apply a command to each of them")
+               (about: "iterates over all configured repositories, clones each of them into a temporary folder, and runs command")
+               (@arg BRANCH: -b --branch +takes_value +required "the name of the branch to which the change is committed.")
+               (@arg MESSAGE: -m --message +takes_value +required "the commit message to use")
+               (@arg COMMENT: -c --comment +takes_value +required "the comment to use for the new pull request")
+               (@arg REVIEWERS: -r --reviewers +takes_value "the reviewer(s) to assign to the pull request")
                (@arg CMD: +required "the shell script to apply")
               )
               (@subcommand create =>
@@ -135,7 +140,19 @@ pub fn start() {
         .0;
     let gh = Github::new(access_token);
 
-    let all_args = vec!["ALL", "REPO", "ORG", "NAME", "FORMAT", "PROFILE"];
+    let all_args = vec![
+        "ALL",
+        "REPO",
+        "ORG",
+        "NAME",
+        "FORMAT",
+        "PROFILE",
+        "BRANCH",
+        "MESSAGE",
+        "COMMENT",
+        "REVIEWERS",
+        "CMD",
+    ];
 
     match matches.subcommand() {
         ("gh", Some(gh_matches)) => match gh_matches.subcommand() {
@@ -152,7 +169,7 @@ pub fn start() {
                     GetPullsCommand::new(context, gh).run(&args);
                 }
                 _ => unreachable!(),
-            }
+            },
             ("project", Some(_project_matches)) => {
                 println!("project cmds");
             }
@@ -165,8 +182,9 @@ pub fn start() {
                     let args = get_args(clone_matches, &all_args);
                     CloneRepoCommand::new(context, gh).run(&args);
                 }
-                ("apply", Some(_)) => {
-                    println!("apply cmd to repo");
+                ("apply", Some(apply_matches)) => {
+                    let args = get_args(apply_matches, &all_args);
+                    ApplyCommand::new(context, gh).run(&args);
                 }
                 _ => unreachable!(),
             },
