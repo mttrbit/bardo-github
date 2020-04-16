@@ -162,7 +162,7 @@ pub fn start() {
             ("issue", Some(issue_matches)) => match issue_matches.subcommand() {
                 ("ls", Some(ls_matches)) => {
                     let args = get_args(ls_matches, &all_args);
-                    GetIssuesCommand::new(context, gh).run(&args);
+                    GetIssuesCommand::new(context, gh).execute(&args);
                 }
                 _ => unreachable!(),
             },

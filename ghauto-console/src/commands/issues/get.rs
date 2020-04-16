@@ -1,4 +1,5 @@
 use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator, PrintStd};
+use crate::cmd::CommandExecutor;
 use crate::commands::repo::get::{FetchRepoCmd, Repository};
 use crate::display::FmtDuration;
 use client::client::{Executor, Github, Result};
@@ -39,37 +40,7 @@ impl GetIssuesCommand {
         }
     }
 
-    pub fn run(&self, args: &Vec<Vec<&str>>) {
-        let mut print_all = false;
-        let mut print_single_repo = false;
-        let mut org = "";
-        let mut name = "";
-        for v in args.iter() {
-            if v.contains(&"ALL") {
-                print_all = true;
-            }
-            if v.contains(&"REPO") {
-                print_single_repo = true;
-                let mut split: std::str::Split<&str> = v[1].split("/");
-                org = split.next().expect("organisation missing");
-                name = split.next().expect("name missing");
-            }
-        }
-        if print_single_repo {
-            self.get_issues(org, name, print_all);
-        } else {
-            let profile = self.context.profile();
-            let repositories = self.context.config().get_profiles()[profile].repositories();
-            for r in repositories.iter() {
-                match (r.org(), r.name()) {
-                    (o, Some(n)) => self.get_issues(&o.0, &n.0, print_all),
-                    (_, _) => (),
-                };
-            }
-        }
-    }
-
-    fn get_issues(&self, org: &str, name: &str, b_print_all: bool) {
+    fn run(&self, org: &str, name: &str, b_print_all: bool) {
         let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd::new(&self.gh, org, name);
         let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
         let repo: Repository = repo_res.unwrap();
@@ -104,6 +75,25 @@ impl GetIssuesCommand {
         println!("");
 
         issues_mut.to_std_out();
+    }
+}
+
+impl<'a> CommandExecutor for GetIssuesCommand {
+
+    fn execute(&self, args: &Vec<Vec<&str>>) {
+        let profile = self.context.profile();
+        let section = &self.context.config().get_profiles()[profile];
+        let repositories = section.repositories();
+        let print_all = crate::utils::pick_all(args);
+        let maybe_repo = crate::utils::pick_repo(args);
+
+        repositories
+            .iter()
+            .filter(|r| crate::utils::maybe_filter_repo(r, &maybe_repo))
+            .for_each(|repo| match (repo.org(), repo.name()) {
+                (o, Some(n)) => self.run(&o.0, &n.0, print_all),
+                (_, _) => (),
+            });
     }
 }
 

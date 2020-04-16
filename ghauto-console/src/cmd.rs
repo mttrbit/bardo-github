@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub type HttpResponse<T> = (HeaderMap, StatusCode, Option<T>);
 
 pub trait Command<T> {
-    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<T>)>;
+    fn execute(&self) -> Result<HttpResponse<T>>;
 }
 
 pub trait IterableCommand<T> {

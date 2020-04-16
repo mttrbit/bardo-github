@@ -19,6 +19,7 @@ pub mod commands;
 pub mod display;
 pub mod cmd;
 pub mod cli;
+pub mod utils;
 
 pub fn run() {
     cli::start();
