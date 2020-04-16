@@ -87,3 +87,8 @@ pub fn read_page_from_link_header(headers: &HeaderMap) -> Option<String> {
 pub trait PrintStd {
     fn to_std_out(&self);
 }
+
+pub trait CommandExecutor {
+
+    fn execute(&self, args: &Vec<Vec<&str>>);
+}

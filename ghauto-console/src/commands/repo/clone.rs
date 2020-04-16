@@ -1,5 +1,6 @@
-use crate::cmd::{Command, HttpResponse};
+use crate::cmd::CommandExecutor;
 use client::client::Github;
+use config::config::Repository;
 use config::context::BardoContext;
 
 pub struct CloneRepoCommand {
@@ -15,38 +16,7 @@ impl CloneRepoCommand {
         }
     }
 
-    pub fn run(&self, args: &Vec<Vec<&str>>) {
-        let mut print_single_repo = false;
-        let mut org = "";
-        let mut name = "";
-        for v in args.iter() {
-            if v.contains(&"REPO") {
-                print_single_repo = true;
-                let mut split: std::str::Split<&str> = v[1].split("/");
-                org = split.next().expect("organisation missing");
-                name = split.next().expect("name missing");
-            }
-        }
-
-        let profile = self.context.profile();
-        let path = &self.context.config().get_profiles()[profile].clone_path().0;
-        println!("");
-        println!("start cloning repos in {}", path);
-        println!("");
-        if print_single_repo {
-            self.clone(&path, org, name);
-        } else {
-            let repositories = self.context.config().get_profiles()[profile].repositories();
-            for r in repositories.iter() {
-                match (r.org(), r.name()) {
-                    (o, Some(n)) => self.clone(&path, &o.0, &n.0),
-                    (_, _) => (),
-                };
-            }
-        }
-    }
-
-    fn clone(&self, path: &str, org: &str, name: &str) {
+    fn run(&self, path: &str, org: &str, name: &str) {
         let ssh_url = format!("git@github.com:{}/{}.git", org, name);
 
         let status = std::process::Command::new("sh")
@@ -57,5 +27,53 @@ impl CloneRepoCommand {
             .expect("failed to execute process");
 
         println!("process exited with: {}", status);
+    }
+}
+
+fn pick_repo<'a>(args: &'a Vec<Vec<&'a str>>) -> Option<(&'a str, &'a str)> {
+    for v in args {
+        if v[0] == "REPO" {
+            let mut split: std::str::Split<&str> = v[1].split("/");
+            let org = split.next().expect("organisation missing");
+            let name = split.next().expect("name missing");
+
+            return Some((org, name));
+        }
+    }
+
+    return None;
+}
+
+impl<'a> CommandExecutor for CloneRepoCommand {
+    fn execute(&self, args: &Vec<Vec<&str>>) {
+        let maybe_repo = pick_repo(args);
+        let profile = self.context.profile();
+        let section = &self.context.config().get_profiles()[profile];
+        let path = &section.clone_path().0;
+        let repositories = section.repositories();
+
+        println!("");
+        println!("start cloning repos in {}", path);
+        println!("");
+
+        repositories
+            .iter()
+            .filter(|r| self::maybe_filter_repo(r, &maybe_repo))
+            .for_each(|repo| match (repo.org(), repo.name()) {
+                (o, Some(n)) => self.run(&path, &o.0, &n.0),
+                (_, _) => (),
+            });
+    }
+}
+
+fn maybe_filter_repo<'a>(
+    repo: &'a Repository,
+    arg: &'a Option<(&str, &str)>,
+) -> bool {
+    match Some((arg, repo.org(), repo.name())) {
+        Some((Some((org, name)), r_org, Some(r_name))) => {
+            r_org.0 == org.to_string() && r_name.0 == name.to_string()
+        }
+        _ => true,
     }
 }

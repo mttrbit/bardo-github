@@ -9,6 +9,7 @@ use crate::commands::pulls::get::GetPullsCommand;
 use crate::commands::repo::clone::CloneRepoCommand;
 use crate::commands::repo::apply::ApplyCommand;
 use crate::commands::users::Command;
+use crate::cmd::CommandExecutor;
 
 enum CliOpts {
     ALL,
@@ -96,6 +97,7 @@ pub fn start() {
               )
               (@subcommand clone =>
                (about: "iterates over all repositories to clone them in clone_path")
+               (@arg REPO: -r --repo +takes_value "fetches all issues from single project")
               )
               (@subcommand apply =>
                (about: "iterates over all configured repositories, clones each of them into a temporary folder, and runs command")
@@ -181,7 +183,7 @@ pub fn start() {
                 }
                 ("clone", Some(clone_matches)) => {
                     let args = get_args(clone_matches, &all_args);
-                    CloneRepoCommand::new(context, gh).run(&args);
+                    CloneRepoCommand::new(context, gh).execute(&args);
                 }
                 ("apply", Some(apply_matches)) => {
                     let args = get_args(apply_matches, &all_args);

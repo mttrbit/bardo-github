@@ -59,16 +59,16 @@ impl ApplyCommand {
 
         let profile = self.context.profile();
         let clone_path = &self.context.config().get_profiles()[profile].clone_path().0;
-
+        let temp_clone_path = format!("{}/.temp", clone_path);
         if print_single_repo {
-            let project_path = [clone_path, "/", name].concat();
+            let project_path = [&temp_clone_path, "/", name].concat();
             self.apply(&project_path, org, name, cmd, branch);
         } else {
             let repositories = self.context.config().get_profiles()[profile].repositories();
             for r in repositories.iter() {
                 match (r.org(), r.name()) {
                     (o, Some(n)) => {
-                        let project_path = [clone_path, "/", &n.0].concat();
+                        let project_path = [&temp_clone_path, "/", &n.0].concat();
                         self.apply(&project_path, &o.0, &n.0, cmd, branch)
                     }
                     (_, _) => (),
@@ -88,10 +88,12 @@ impl ApplyCommand {
             .status()
             .expect("failed to execute process");
         if status.success() {
-            // println!("files {:?}", self.changed_files(path));
-            let (_, _, res) = self.get_latest_commit(org, name).unwrap();
-            let sha = res.unwrap();
-            self.create_branch(org, name, branch, sha.sha());
+            let files = self.changed_files(path);
+            if !files.is_empty() {
+                let (_, _, res) = self.get_latest_commit(org, name).unwrap();
+                let sha = res.unwrap();
+                //self.create_branch(org, name, branch, sha.sha());
+            }
         }
     }
 
