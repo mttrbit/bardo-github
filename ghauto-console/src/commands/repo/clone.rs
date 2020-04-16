@@ -1,34 +1,55 @@
+use crate::cmd::Command;
 use crate::cmd::CommandExecutor;
-use client::client::Github;
-use config::config::Repository;
+use client::client::Result;
 use config::context::BardoContext;
 
-pub struct CloneRepoCommand {
-    context: BardoContext,
+pub struct CloneRepoCommand<'a> {
+    path: &'a str,
+    org: &'a str,
+    name: &'a str,
 }
 
-impl CloneRepoCommand {
-    pub fn new(ctx: BardoContext, gh: Github) -> Self {
+impl<'a> CloneRepoCommand<'a> {
+
+    fn new(path: &'a str, org: &'a str, name: &'a str) -> Self {
         Self {
-            context: ctx,
+            path: path,
+            org: org,
+            name: name,
         }
     }
+}
 
-    fn run(&self, path: &str, org: &str, name: &str) {
-        let ssh_url = format!("git@github.com:{}/{}.git", org, name);
+impl<'a> Command<()> for CloneRepoCommand<'a> {
+    fn execute(&self) -> Result<()> {
+        let ssh_url = format!("git@github.com:{}/{}.git", self.org, self.name);
 
         let status = std::process::Command::new("sh")
-            .current_dir(path)
+            .current_dir(self.path)
             .arg("-c")
             .arg(format!("git clone {}", ssh_url))
             .status()
             .expect("failed to execute process");
 
         println!("process exited with: {}", status);
+
+        Ok(())
     }
 }
 
-impl<'a> CommandExecutor for CloneRepoCommand {
+pub struct CloneRepoCommandExecutor {
+    context: BardoContext,
+}
+
+impl CloneRepoCommandExecutor {
+     pub fn new(ctx: BardoContext) -> Self {
+        Self {
+            context: ctx,
+        }
+    }
+}
+
+impl<'a> CommandExecutor for CloneRepoCommandExecutor {
     fn execute(&self, args: &Vec<Vec<&str>>) {
         let maybe_repo = crate::utils::pick_repo(args);
         let profile = self.context.profile();
@@ -44,7 +65,7 @@ impl<'a> CommandExecutor for CloneRepoCommand {
             .iter()
             .filter(|r| crate::utils::maybe_filter_repo(r, &maybe_repo))
             .for_each(|repo| match (repo.org(), repo.name()) {
-                (o, Some(n)) => self.run(&path, &o.0, &n.0),
+                (o, Some(n)) => {let _ = CloneRepoCommand::new(&path, &o.0, &n.0).execute();},
                 (_, _) => (),
             });
     }

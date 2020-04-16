@@ -43,20 +43,18 @@ impl<'a> PrintStd for GetIssuesCommandResult {
         let total_issues = &self.2;
         let maybe_fetched_issues = &self.3;
 
-
         println!("");
         if maybe_fetched_issues.is_some() {
             println!(
                 "Showing {} of {} open issues in {}",
                 maybe_fetched_issues.unwrap(), total_issues, full_name
-            )
+            );
         } else {
             println!(
                 "Showing {} open issues in {}",
                 total_issues, full_name
             );
         }
-
         println!("");
 
         issues.to_std_out();
@@ -102,7 +100,6 @@ impl<'a> Command<GetIssuesCommandResult> for GetIssuesCommand<'a> {
     }
 }
 
-
 pub struct GetIssuesCommandExecutor {
     gh: Github,
     context: BardoContext,
@@ -132,7 +129,7 @@ impl<'a> CommandExecutor for GetIssuesCommandExecutor {
             .for_each(|repo| match (repo.org(), repo.name()) {
                 (o, Some(n)) => {match GetIssuesCommand::new(&self.gh, &o.0, &n.0, print_all).execute() {
                     Ok(res) => res.to_std_out(),
-                    Err(e) => (),
+                    Err(_) => (),
                 }},
                 (_, _) => (),
             });

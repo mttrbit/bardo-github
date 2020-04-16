@@ -6,7 +6,7 @@ use std::env;
 use crate::commands::issues::get::GetIssuesCommandExecutor;
 use crate::commands::labels::get::GetLabelsCommand;
 use crate::commands::pulls::get::GetPullsCommand;
-use crate::commands::repo::clone::CloneRepoCommand;
+use crate::commands::repo::clone::CloneRepoCommandExecutor;
 use crate::commands::repo::apply::ApplyCommand;
 use crate::commands::users::Command;
 use crate::cmd::CommandExecutor;
@@ -183,7 +183,7 @@ pub fn start() {
                 }
                 ("clone", Some(clone_matches)) => {
                     let args = get_args(clone_matches, &all_args);
-                    CloneRepoCommand::new(context, gh).execute(&args);
+                    CloneRepoCommandExecutor::new(context).execute(&args);
                 }
                 ("apply", Some(apply_matches)) => {
                     let args = get_args(apply_matches, &all_args);

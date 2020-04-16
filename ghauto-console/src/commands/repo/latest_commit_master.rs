@@ -1,7 +1,5 @@
 use crate::cmd::{Command, HttpResponse};
 use client::client::{Github, Result,Executor};
-use reqwest::header::HeaderMap;
-use reqwest::StatusCode;
 
 #[derive(Deserialize, Debug)]
 pub struct Sha {
