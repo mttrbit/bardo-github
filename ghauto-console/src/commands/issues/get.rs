@@ -1,6 +1,6 @@
 use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator, PrintStd};
 use crate::cmd::CommandExecutor;
-use crate::commands::repo::get::{FetchRepoCmd, Repository};
+use crate::commands::repo::get::{GetRepoCmd, Repository};
 use crate::display::FmtDuration;
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
@@ -27,58 +27,97 @@ pub struct Issue {
     updated_at: String,
 }
 
-pub struct GetIssuesCommand {
-    context: BardoContext,
-    gh: Github,
+pub struct GetIssuesCommand<'a> {
+    gh: &'a Github,
+    org: &'a str,
+    name: &'a str,
+    b_print_all: bool,
 }
 
-impl GetIssuesCommand {
-    pub fn new(ctx: BardoContext, gh: Github) -> Self {
+pub struct GetIssuesCommandResult(pub String, pub Vec<Issue>, pub u32, pub Option<u32>);
+
+impl<'a> PrintStd for GetIssuesCommandResult {
+    fn to_std_out(&self) {
+        let full_name = &self.0;
+        let issues = &self.1;
+        let total_issues = &self.2;
+        let maybe_fetched_issues = &self.3;
+
+
+        println!("");
+        if maybe_fetched_issues.is_some() {
+            println!(
+                "Showing {} of {} open issues in {}",
+                maybe_fetched_issues.unwrap(), total_issues, full_name
+            )
+        } else {
+            println!(
+                "Showing {} open issues in {}",
+                total_issues, full_name
+            );
+        }
+
+        println!("");
+
+        issues.to_std_out();
+    }
+}
+
+impl<'a> GetIssuesCommand<'a> {
+   pub fn new(gh: &'a Github, org: &'a str, name: &'a str, b_print_all: bool) -> Self {
         Self {
-            context: ctx,
             gh: gh,
+            org: org,
+            name: name,
+            b_print_all: b_print_all,
         }
     }
+}
 
-    fn run(&self, org: &str, name: &str, b_print_all: bool) {
-        let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd::new(&self.gh, org, name);
-        let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
+impl<'a> Command<GetIssuesCommandResult> for GetIssuesCommand<'a> {
+    fn execute(&self) -> Result<GetIssuesCommandResult> {
+        let cmd: FetchOpenIssuesCmd = FetchOpenIssuesCmd::new(&self.gh, self.org, self.name);
+        let (_, _, repo_res) = GetRepoCmd(&self.gh, self.org, self.name).execute().unwrap();
         let repo: Repository = repo_res.unwrap();
         let full_name = repo.full_name();
         let num_total_issues = *repo.open_issue_count();
-        let mut issues_mut: Vec<Issue>;
         println!("");
 
         let mut iter = cmd.execute_iter().into_iter();
 
-        if b_print_all == false {
+        if self.b_print_all == false {
             let (_, _, res) = iter.next().unwrap().unwrap();
-            issues_mut = res.unwrap();
-            let num_fetched_issues = issues_mut.len();
-            println!(
-                "Showing {} of {} open issues in {}",
-                num_fetched_issues, num_total_issues, full_name
-            );
+            let issues = res.unwrap();
+            let fetched_issues = issues.len().try_into().unwrap();
+            return Ok(GetIssuesCommandResult(full_name.to_string(), issues, num_total_issues, Some(fetched_issues)));
         } else {
-            issues_mut = Vec::with_capacity(num_total_issues.try_into().unwrap());
+            let mut issues_mut = Vec::with_capacity(num_total_issues.try_into().unwrap());
             for next in iter {
                 let (_, _, res) = next.unwrap();
                 issues_mut.append(res.unwrap().as_mut());
             }
 
-            println!(
-                "Showing {} open issues in {}",
-                num_total_issues, full_name
-            );
+            return Ok(GetIssuesCommandResult(full_name.to_string(), issues_mut, num_total_issues, None));
         }
-
-        println!("");
-
-        issues_mut.to_std_out();
     }
 }
 
-impl<'a> CommandExecutor for GetIssuesCommand {
+
+pub struct GetIssuesCommandExecutor {
+    gh: Github,
+    context: BardoContext,
+}
+
+impl GetIssuesCommandExecutor {
+     pub fn new(gh: Github, context: BardoContext) -> Self {
+        Self {
+            gh: gh,
+            context: context,
+        }
+    }
+}
+
+impl<'a> CommandExecutor for GetIssuesCommandExecutor {
 
     fn execute(&self, args: &Vec<Vec<&str>>) {
         let profile = self.context.profile();
@@ -91,7 +130,10 @@ impl<'a> CommandExecutor for GetIssuesCommand {
             .iter()
             .filter(|r| crate::utils::maybe_filter_repo(r, &maybe_repo))
             .for_each(|repo| match (repo.org(), repo.name()) {
-                (o, Some(n)) => self.run(&o.0, &n.0, print_all),
+                (o, Some(n)) => {match GetIssuesCommand::new(&self.gh, &o.0, &n.0, print_all).execute() {
+                    Ok(res) => res.to_std_out(),
+                    Err(e) => (),
+                }},
                 (_, _) => (),
             });
     }

@@ -1,13 +1,10 @@
-use crate::cmd::Command;
+use crate::cmd::{Command, HttpResponse};
 use client::client::{Github, Result,Executor};
-use reqwest::header::HeaderMap;
-use reqwest::StatusCode;
-
 
 pub struct CreateBranchCmd<'a>(pub &'a Github, pub &'a str, pub &'a str, pub &'a serde_json::Value);
 
-impl<'a> Command<serde_json::Value> for CreateBranchCmd<'a> {
-    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<serde_json::Value>)> {
+impl<'a> Command<HttpResponse<serde_json::Value>> for CreateBranchCmd<'a> {
+    fn execute(&self) -> Result<HttpResponse<serde_json::Value>> {
         let result = self
             .0
             .post(self.3)

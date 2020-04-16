@@ -1,5 +1,5 @@
 use crate::cmd::{Command, IterableCommand, HttpResponse, ResultIterator, PrintStd};
-use crate::commands::repo::get::{FetchRepoCmd, Repository};
+use crate::commands::repo::get::{GetRepoCmd, Repository};
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
 
@@ -64,7 +64,7 @@ impl GetPullsCommand {
 
     fn get_pulls(&self, org: &str, name: &str, b_print_all: bool) {
         let cmd: FetchOpenPullsCmd = FetchOpenPullsCmd::new(&self.gh, org, name);
-        let (_, _, repo_res) = FetchRepoCmd(&self.gh, org, name).execute().unwrap();
+        let (_, _, repo_res) = GetRepoCmd(&self.gh, org, name).execute().unwrap();
         let repo: Repository = repo_res.unwrap();
         let full_name = repo.full_name();
         let mut pulls_mut: Vec<Pull>;

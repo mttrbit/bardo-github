@@ -1,8 +1,7 @@
-use crate::cmd::Command;
+use crate::cmd::{Command, HttpResponse};
 use client::client::{Github, Result,Executor};
 use reqwest::header::HeaderMap;
 use reqwest::StatusCode;
-use reqwest::header::{HeaderValue, ACCEPT};
 
 #[derive(Deserialize, Debug)]
 pub struct Sha {
@@ -17,8 +16,8 @@ impl Sha {
 
 pub struct GetLatestCommitCmd<'a>(pub &'a Github, pub &'a str, pub &'a str, pub &'a str);
 
-impl<'a> Command<Sha> for GetLatestCommitCmd<'a> {
-    fn execute(&self) -> Result<(HeaderMap, StatusCode, Option<Sha>)> {
+impl<'a> Command<HttpResponse<Sha>> for GetLatestCommitCmd<'a> {
+    fn execute(&self) -> Result<HttpResponse<Sha>> {
         let result = self
             .0
             .get()

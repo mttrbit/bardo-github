@@ -3,7 +3,7 @@ use client::client::Github;
 use config::context::BardoContext;
 use std::env;
 
-use crate::commands::issues::get::GetIssuesCommand;
+use crate::commands::issues::get::GetIssuesCommandExecutor;
 use crate::commands::labels::get::GetLabelsCommand;
 use crate::commands::pulls::get::GetPullsCommand;
 use crate::commands::repo::clone::CloneRepoCommand;
@@ -162,7 +162,7 @@ pub fn start() {
             ("issue", Some(issue_matches)) => match issue_matches.subcommand() {
                 ("ls", Some(ls_matches)) => {
                     let args = get_args(ls_matches, &all_args);
-                    GetIssuesCommand::new(context, gh).execute(&args);
+                    GetIssuesCommandExecutor::new(gh, context).execute(&args);
                 }
                 _ => unreachable!(),
             },
