@@ -1,6 +1,6 @@
 pub fn pick_repo<'a>(args: &'a Vec<Vec<&'a str>>) -> Option<(&'a str, &'a str)> {
     for v in args {
-        if v[0] == "repo" {
+        if v[0] == "REPO" {
             let mut split: std::str::Split<&str> = v[1].split("/");
             let org = split.next().expect("organisation missing");
             let name = split.next().expect("name missing");

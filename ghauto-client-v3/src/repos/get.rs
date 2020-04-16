@@ -3,6 +3,7 @@ use crate::client::GetQueryBuilder;
 
 new_type!(
     Commits
+    Contents
     Issues
     IssuesPage
     IssuesState
@@ -10,6 +11,7 @@ new_type!(
     Labels
     LabelsName
     Owner
+    Path
     Pulls
     PullsNumber
     PullsPage
@@ -22,6 +24,8 @@ new_type!(
 from!(
     @Commits
         => Reference
+    @Contents
+        => Path
     @Issues
     @Issues
         => IssuesNumber
@@ -34,6 +38,7 @@ from!(
         -> Repos = "repos"
     @Owner
         => Repo
+    @Path
     @Pulls
         => PullsNumber
     @Pulls
@@ -46,6 +51,8 @@ from!(
         -> Labels = "labels"
     @Repo
         -> Commits = "commits"
+    @Repo
+        -> Contents = "contents"
     @Repos
         => Owner
     @Reference
@@ -55,6 +62,9 @@ impl_macro!(
     @Commits
         |
         |=> reference -> Reference = ref_str
+    @Contents
+        |
+        |=> path -> Path = path
     @Issues
         |
         |=> number -> IssuesNumber = issue_number
@@ -70,6 +80,7 @@ impl_macro!(
         |=> number -> PullsNumber = pulls_number
         |?> page -> PullsPage = page
     @Repo
+        |=> contents -> Contents
         |=> issues -> Issues
         |=> labels -> Labels
         |=> pulls -> Pulls
@@ -87,6 +98,7 @@ exec!(IssuesPage);
 exec!(IssuesState);
 exec!(IssuesNumber);
 exec!(Labels);
+exec!(Path);
 exec!(Pulls);
 exec!(PullsNumber);
 exec!(PullsPage);

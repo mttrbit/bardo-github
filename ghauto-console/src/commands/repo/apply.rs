@@ -1,8 +1,8 @@
 use crate::cmd::{Command, HttpResponse};
-use client::client::{Github, Result};
+use client::client::{Github, Result, Executor};
 use config::context::BardoContext;
-use crate::commands::repo::create_branch::CreateBranchCmd;
-use crate::commands::repo::latest_commit_master::{GetLatestCommitCmd, Sha};
+use crate::commands::repo::post::CreateBranchCmd;
+use crate::commands::repo::get::{GetLatestCommitCmd, Sha};
 
 pub struct ApplyCommand {
     context: BardoContext,
@@ -23,19 +23,14 @@ impl ApplyCommand {
     }
 
     pub fn run(&self, args: &Vec<Vec<&str>>) {
-        let mut print_single_repo = false;
-        let mut org = "";
-        let mut name = "";
+        let maybe_repo = crate::utils::pick_repo(args);
+        let profile = self.context.profile();
+        let section = &self.context.config().get_profiles()[profile];
+        let repositories = section.repositories();
+        let path = &section.clone_path().0;
         let mut cmd = "";
         let mut branch = "";
         for v in args.iter() {
-            if v.contains(&"REPO") {
-                print_single_repo = true;
-                let mut split: std::str::Split<&str> = v[1].split("/");
-                org = split.next().expect("organisation missing");
-                name = split.next().expect("name missing");
-            }
-
             if v.contains(&"CMD") {
                 cmd = v[1]
             }
@@ -57,24 +52,18 @@ impl ApplyCommand {
             }
         }
 
-        let profile = self.context.profile();
-        let clone_path = &self.context.config().get_profiles()[profile].clone_path().0;
-        let temp_clone_path = format!("{}/.temp", clone_path);
-        if print_single_repo {
-            let project_path = [&temp_clone_path, "/", name].concat();
-            self.apply(&project_path, org, name, cmd, branch);
-        } else {
-            let repositories = self.context.config().get_profiles()[profile].repositories();
-            for r in repositories.iter() {
-                match (r.org(), r.name()) {
-                    (o, Some(n)) => {
-                        let project_path = [&temp_clone_path, "/", &n.0].concat();
-                        self.apply(&project_path, &o.0, &n.0, cmd, branch)
-                    }
-                    (_, _) => (),
-                };
-            }
-        }
+        let temp_clone_path = format!("{}/.temp", path);
+        repositories
+            .iter()
+            .filter(|r| crate::utils::maybe_filter_repo(r, &maybe_repo))
+            .for_each(|repo| match (repo.org(), repo.name()) {
+                (o, Some(n)) => {
+                    // let _ = crate::commands::repo::clone::CloneRepoCommand::new(&temp_clone_path, &o.0, &n.0).execute();
+                    let project_path = [&temp_clone_path, "/", &n.0].concat();
+                    self.apply(&project_path, &o.0, &n.0, cmd, branch)
+                },
+                (_, _) => (),
+            });
     }
 
     fn apply(&self, path: &str, org: &str, name: &str, cmd: &str, branch: &str) {
@@ -88,30 +77,50 @@ impl ApplyCommand {
             .status()
             .expect("failed to execute process");
         if status.success() {
-            let files = self.changed_files(path);
+            let files = ListChangedFilesCommand::new(path).execute().unwrap();
             if !files.is_empty() {
                 let (_, _, res) = self.get_latest_commit(org, name).unwrap();
                 let sha = res.unwrap();
-                //self.create_branch(org, name, branch, sha.sha());
+                self.create_branch(org, name, branch, sha.sha());
+                // println!("file: {:?}", GetFileCommand(&self.gh, org, name, &files[0]).execute().unwrap().2.unwrap().sha());
             }
         }
     }
 
-    fn clone_repo(path: &str, org: &str, name: &str) -> std::io::Result<std::process::ExitStatus> {
-        let ssh_url = format!("git@github.com:{}/{}.git", org, name);
-        std::process::Command::new("sh")
-            .current_dir(path)
-            .arg("-c")
-            .arg(format!("git clone {}", ssh_url))
-            .status()
+    fn get_latest_commit(&self,  org: &str, name: &str) -> Result<HttpResponse<Sha>> {
+        GetLatestCommitCmd(&self.gh, org, name, "heads/master").execute()
     }
 
-    /// Create a vector of changed files.
-    ///
-    /// This function looks for modified or untracked files using `git status`.
-    fn changed_files(&self, path: &str) -> Vec<String> {
+    fn create_branch(&self,  org: &str, name: &str, branch: &str, sha: &str) {
+        let a_ref = format!("refs/heads/{}", branch);
+        let body = serde_json::json!({"ref": a_ref, "sha": sha});
+        println!("create branch: {:?}", CreateBranchCmd(&self.gh, org, name, &body).execute().unwrap());
+    }
+
+    fn commit_branch() {}
+
+    fn create_pr() {}
+}
+
+struct ListChangedFilesCommand<'a> {
+    path: &'a str,
+}
+
+impl<'a> ListChangedFilesCommand<'a> {
+    pub fn new(path: &'a str) -> Self {
+        Self {
+            path: path,
+        }
+    }
+}
+
+/// Create a vector of changed files.
+///
+/// This function looks for modified or untracked files using `git status`.
+impl<'a> Command<Vec<String>> for ListChangedFilesCommand<'a> {
+    fn execute(&self) -> Result<Vec<String>> {
         let changes = std::process::Command::new("sh")
-            .current_dir(path)
+            .current_dir(self.path)
             .arg("-c")
             .arg("git status --porcelain --untracked-files")
             .output()
@@ -131,20 +140,24 @@ impl ApplyCommand {
             }
         }
 
-        files
+        Ok(files)
     }
+}
 
-    fn get_latest_commit(&self,  org: &str, name: &str) -> Result<HttpResponse<Sha>> {
-        GetLatestCommitCmd(&self.gh, org, name, "heads/master").execute()
+struct GetFileCommand<'a>(pub &'a Github, pub &'a str, pub &'a str, pub &'a str);
+
+impl<'a> Command<HttpResponse<Sha>> for GetFileCommand<'a> {
+    fn execute(&self) -> Result<HttpResponse<Sha>> {
+        let result = self
+            .0
+            .get()
+            .repos()
+            .owner(self.1)
+            .repo(self.2)
+            .contents()
+            .path(self.3)
+            .execute::<Sha>();
+
+        result
     }
-
-    fn create_branch(&self,  org: &str, name: &str, branch: &str, sha: &str) {
-        let a_ref = format!("refs/heads/{}", branch);
-        let body = serde_json::json!({"ref": a_ref, "sha": sha});
-        println!("create branch: {:?}", CreateBranchCmd(&self.gh, org, name, &body).execute().unwrap());
-    }
-
-    fn commit_branch() {}
-
-    fn create_pr() {}
 }

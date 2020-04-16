@@ -10,8 +10,7 @@ pub struct CloneRepoCommand<'a> {
 }
 
 impl<'a> CloneRepoCommand<'a> {
-
-    fn new(path: &'a str, org: &'a str, name: &'a str) -> Self {
+    pub fn new(path: &'a str, org: &'a str, name: &'a str) -> Self {
         Self {
             path: path,
             org: org,
@@ -20,8 +19,8 @@ impl<'a> CloneRepoCommand<'a> {
     }
 }
 
-impl<'a> Command<()> for CloneRepoCommand<'a> {
-    fn execute(&self) -> Result<()> {
+impl<'a> Command<std::process::ExitStatus> for CloneRepoCommand<'a> {
+    fn execute(&self) -> Result<std::process::ExitStatus> {
         let ssh_url = format!("git@github.com:{}/{}.git", self.org, self.name);
 
         let status = std::process::Command::new("sh")
@@ -33,7 +32,7 @@ impl<'a> Command<()> for CloneRepoCommand<'a> {
 
         println!("process exited with: {}", status);
 
-        Ok(())
+        Ok(status)
     }
 }
 
