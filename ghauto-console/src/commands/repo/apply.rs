@@ -1,6 +1,8 @@
 use crate::cmd::{Command, HttpResponse};
-use client::client::Github;
+use client::client::{Github, Result};
 use config::context::BardoContext;
+use crate::commands::repo::create_branch::CreateBranchCmd;
+use crate::commands::repo::latest_commit_master::{GetLatestCommitCmd, Sha};
 
 pub struct ApplyCommand {
     context: BardoContext,
@@ -25,6 +27,7 @@ impl ApplyCommand {
         let mut org = "";
         let mut name = "";
         let mut cmd = "";
+        let mut branch = "";
         for v in args.iter() {
             if v.contains(&"REPO") {
                 print_single_repo = true;
@@ -38,7 +41,7 @@ impl ApplyCommand {
             }
 
             if v.contains(&"BRANCH") {
-                println!("branch {}", v[1]);
+                branch = v[1]
             }
 
             if v.contains(&"MESSAGE") {
@@ -59,14 +62,14 @@ impl ApplyCommand {
 
         if print_single_repo {
             let project_path = [clone_path, "/", name].concat();
-            self.apply(&project_path, org, name, cmd);
+            self.apply(&project_path, org, name, cmd, branch);
         } else {
             let repositories = self.context.config().get_profiles()[profile].repositories();
             for r in repositories.iter() {
                 match (r.org(), r.name()) {
                     (o, Some(n)) => {
                         let project_path = [clone_path, "/", &n.0].concat();
-                        self.apply(&project_path, &o.0, &n.0, cmd)
+                        self.apply(&project_path, &o.0, &n.0, cmd, branch)
                     }
                     (_, _) => (),
                 };
@@ -74,8 +77,7 @@ impl ApplyCommand {
         }
     }
 
-    fn apply(&self, path: &str, org: &str, name: &str, cmd: &str) {
-        let ssh_url = format!("git@github.com:{}/{}.git", org, name);
+    fn apply(&self, path: &str, org: &str, name: &str, cmd: &str, branch: &str) {
         println!("");
         println!("");
         println!("applying the command {} to {}", cmd, path);
@@ -86,7 +88,10 @@ impl ApplyCommand {
             .status()
             .expect("failed to execute process");
         if status.success() {
-            println!("files {:?}", self.changed_files(path));
+            // println!("files {:?}", self.changed_files(path));
+            let (_, _, res) = self.get_latest_commit(org, name).unwrap();
+            let sha = res.unwrap();
+            self.create_branch(org, name, branch, sha.sha());
         }
     }
 
@@ -127,7 +132,15 @@ impl ApplyCommand {
         files
     }
 
-    fn create_branch() {}
+    fn get_latest_commit(&self,  org: &str, name: &str) -> Result<HttpResponse<Sha>> {
+        GetLatestCommitCmd(&self.gh, org, name, "heads/master").execute()
+    }
+
+    fn create_branch(&self,  org: &str, name: &str, branch: &str, sha: &str) {
+        let a_ref = format!("refs/heads/{}", branch);
+        let body = serde_json::json!({"ref": a_ref, "sha": sha});
+        println!("create branch: {:?}", CreateBranchCmd(&self.gh, org, name, &body).execute().unwrap());
+    }
 
     fn commit_branch() {}
 

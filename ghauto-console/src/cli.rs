@@ -102,8 +102,9 @@ pub fn start() {
                (@arg BRANCH: -b --branch +takes_value +required "the name of the branch to which the change is committed.")
                (@arg MESSAGE: -m --message +takes_value +required "the commit message to use")
                (@arg COMMENT: -c --comment +takes_value +required "the comment to use for the new pull request")
-               (@arg REVIEWERS: -r --reviewers +takes_value "the reviewer(s) to assign to the pull request")
+               (@arg REVIEWERS: --reviewers +takes_value "the reviewer(s) to assign to the pull request")
                (@arg CMD: +required "the shell script to apply")
+               (@arg REPO: -r --repo +takes_value "use a single project")
               )
               (@subcommand create =>
                (about: "create a new repository and add it to your profile")

@@ -4,9 +4,11 @@ use crate::client::PostQueryBuilder;
 new_type!(
     Git
     Owner
+    Ref
     Refs
     Repo
     Repos
+    Sha
 );
 
 from!(
@@ -17,9 +19,9 @@ from!(
     @Owner
         => Repo
     @Repo
-        => Git
+        -> Git = "git"
     @Git
-        => Refs
+        -> Refs = "refs"
 );
 
 impl_macro!(

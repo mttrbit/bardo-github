@@ -4,6 +4,7 @@ use hyper::{HeaderMap, StatusCode};
 use reqwest::blocking::{Client, Request};
 use reqwest::{Url, Method};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -74,6 +75,29 @@ impl Github {
     pub fn get(&self) -> GetQueryBuilder {
         self.into()
     }
+
+    pub fn post<T>(&self, body: T) -> PostQueryBuilder
+    where
+        T: Serialize,
+    {
+        let mut qb: PostQueryBuilder = self.into();
+        if let Ok(mut qbr) = qb.request {
+            let serialized = serde_json::to_vec(&body);
+            match serialized {
+                Ok(json) => {
+                    let json_str: Vec<u8> = json.into();
+                    let body = reqwest::blocking::Body::from(json_str);
+                    *qbr.get_mut().body_mut() = Some(body);
+                    qb.request = Ok(qbr);
+                }
+                Err(_) => {
+                    qb.request = Err("Unable to serialize data to JSON".into());
+                }
+            }
+        }
+
+        qb
+    }
 }
 
 impl<'g> GetQueryBuilder<'g> {
@@ -87,6 +111,23 @@ impl<'g> GetQueryBuilder<'g> {
 
     /// Query the issues endpoint
     func_client!(issues, crate::issues::get::Issues<'g>);
+
+    pub fn set_header(
+        mut self,
+        header_name: impl Into<HeaderName>,
+        accept_header: impl Into<HeaderValue>,
+    ) -> Self {
+        match self.request {
+            Ok(mut req) => {
+                req.get_mut()
+                    .headers_mut()
+                    .insert(header_name.into(), accept_header.into());
+                self.request = Ok(req);
+                self
+            }
+            Err(_) => self,
+        }
+    }
 }
 
 impl<'g> PostQueryBuilder<'g> {
