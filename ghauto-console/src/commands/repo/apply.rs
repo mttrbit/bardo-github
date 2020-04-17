@@ -1,6 +1,6 @@
 use crate::cmd::{Command, HttpResponse};
 use crate::commands::repo::get::{GetLatestCommitCmd, Sha};
-use crate::commands::repo::post::CreateBranchCmd;
+use crate::commands::repo::post::{CreateBranchCmd, CreateBranchResponse};
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
 
@@ -63,13 +63,13 @@ impl ApplyCommand {
                 (o, Some(n)) => {
                     // let _ = crate::commands::repo::clone::CloneRepoCommand::new(&temp_clone_path, &o.0, &n.0).execute();
                     let project_path = [&temp_clone_path, "/", &n.0].concat();
-                    self.apply(&project_path, &o.0, &n.0, cmd, branch, message)
+                    self.apply(&project_path, &o.0, &n.0, cmd, branch, message, comment)
                 }
                 (_, _) => (),
             });
     }
 
-    fn apply(&self, path: &str, org: &str, name: &str, cmd: &str, branch: &str, message: &str) {
+    fn apply(&self, path: &str, org: &str, name: &str, cmd: &str, branch: &str, message: &str, comment: &str) {
         println!("");
         println!("");
         println!("applying the command {} to {}", cmd, path);
@@ -83,22 +83,30 @@ impl ApplyCommand {
             let files = ListChangedFilesCommand(path).execute().unwrap();
             if !files.is_empty() {
                 let (_, _, maybe_commit_sha) = self.get_latest_commit(org, name).unwrap();
-                self.create_branch(org, name, branch, maybe_commit_sha.unwrap().sha());
-                let (_, _, maybe_file_sha) = GetFileCommand(&self.gh, org, name, &files[0]).execute().unwrap();
+                let (_, _, maybe_branch) =
+                    self.create_branch(org, name, branch, maybe_commit_sha.unwrap().sha()).unwrap();
 
-                let file_path = [path, "/", &files[0]].concat();
-                let file_content = crate::config::file::read(file_path).unwrap();
-                let file_content_base64 = base64::encode(file_content);
-                if (maybe_file_sha.is_some()) {
-                    // update file index
-                    let file_sha = maybe_file_sha.unwrap();
-                    let body = serde_json::json!({"content": file_content_base64, "sha": file_sha.sha(), "branch": branch, "message": message});
-                    crate::commands::repo::put::UpdateFileCmd(&self.gh, org, name, &files[0], &body).execute();
-                } else {
-                    // create new file index
-                    let body = serde_json::json!({"content": file_content_base64, "branch": branch, "message": message});
-                    crate::commands::repo::put::UpdateFileCmd(&self.gh, org, name, path, &body).execute();
+                for file in files {
+                    let (_, _, maybe_file_sha) = GetFileCommand(&self.gh, org, name, &file)
+                        .execute()
+                        .unwrap();
+                    let file_path = [path, "/", &file].concat();
+                    let file_content = crate::config::file::read(file_path).unwrap();
+                    let file_content_base64 = base64::encode(file_content);
+                    let body = if maybe_file_sha.is_some() {
+                        let file_sha = maybe_file_sha.unwrap();
+                        serde_json::json!({"content": file_content_base64, "sha": file_sha.sha(), "branch": branch, "message": message})
+                    } else {
+                        serde_json::json!({"content": file_content_base64, "branch": branch, "message": message})
+                    };
+                    crate::commands::repo::put::UpdateFileCmd(&self.gh, org, name, &file, &body)
+                        .execute();
                 }
+                let branch_response = maybe_branch.unwrap();
+                let head = branch_response.reference();
+                let base = "refs/heads/master";
+                let body = serde_json::json!({"head": head.as_str(), "base": base, "title": branch, "body": comment});
+                crate::commands::repo::post::CreatePrCommand(&self.gh, org, name, &body).execute();
             }
         }
     }
@@ -107,15 +115,16 @@ impl ApplyCommand {
         GetLatestCommitCmd(&self.gh, org, name, "heads/master").execute()
     }
 
-    fn create_branch(&self, org: &str, name: &str, branch: &str, sha: &str) {
+    fn create_branch(
+        &self,
+        org: &str,
+        name: &str,
+        branch: &str,
+        sha: &str,
+    ) -> Result<HttpResponse<CreateBranchResponse>> {
         let a_ref = format!("refs/heads/{}", branch);
         let body = serde_json::json!({"ref": a_ref, "sha": sha});
-        println!(
-            "create branch: {:?}",
-            CreateBranchCmd(&self.gh, org, name, &body)
-                .execute()
-                .unwrap()
-        );
+        CreateBranchCmd(&self.gh, org, name, &body).execute()
     }
 
     fn create_pr() {}

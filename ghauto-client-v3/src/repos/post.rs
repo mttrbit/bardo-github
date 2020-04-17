@@ -4,6 +4,7 @@ use crate::client::PostQueryBuilder;
 new_type!(
     Git
     Owner
+    Pulls
     Ref
     Refs
     Repo
@@ -12,33 +13,36 @@ new_type!(
 );
 
 from!(
-    @PostQueryBuilder
-        -> Repos = "repos"
-    @Repos
-        => Owner
-    @Owner
-        => Repo
-    @Repo
-        -> Git = "git"
     @Git
         -> Refs = "refs"
+    @Owner
+        => Repo
+    @PostQueryBuilder
+        -> Repos = "repos"
+    @Repo
+        -> Git = "git"
+        -> Pulls = "pulls"
+    @Repos
+        => Owner
 );
 
 impl_macro!(
-    @Repos
-        |
-        |=> owner -> Owner = username_str
-    @Owner
-        |
-        |=> repo -> Repo = repo_str
-    @Repo
-        |=> git -> Git
-        |
     @Git
         |=> refs -> Refs
         |
+    @Owner
+        |
+        |=> repo -> Repo = repo_str
     @Refs
         |
+    @Repo
+        |=> pulls -> Pulls
+        |=> git -> Git
+        |
+    @Repos
+        |
+        |=> owner -> Owner = username_str
 );
 
+exec!(Pulls);
 exec!(Refs);
