@@ -1,8 +1,8 @@
 use crate::cmd::{Command, HttpResponse};
-use client::client::{Github, Result, Executor};
-use config::context::BardoContext;
-use crate::commands::repo::post::CreateBranchCmd;
 use crate::commands::repo::get::{GetLatestCommitCmd, Sha};
+use crate::commands::repo::post::CreateBranchCmd;
+use client::client::{Executor, Github, Result};
+use config::context::BardoContext;
 
 pub struct ApplyCommand {
     context: BardoContext,
@@ -30,6 +30,9 @@ impl ApplyCommand {
         let path = &section.clone_path().0;
         let mut cmd = "";
         let mut branch = "";
+        let mut message = "";
+        let mut comment = "";
+        let mut reviewers = "";
         for v in args.iter() {
             if v.contains(&"CMD") {
                 cmd = v[1]
@@ -40,15 +43,15 @@ impl ApplyCommand {
             }
 
             if v.contains(&"MESSAGE") {
-                println!("message {}", v[1]);
+                message = v[1]
             }
 
             if v.contains(&"COMMENT") {
-                println!("comment {}", v[1]);
+                comment = v[1]
             }
 
             if v.contains(&"REVIEWERS") {
-                println!("reviewers {}", v[1]);
+                reviewers = v[1]
             }
         }
 
@@ -60,13 +63,13 @@ impl ApplyCommand {
                 (o, Some(n)) => {
                     // let _ = crate::commands::repo::clone::CloneRepoCommand::new(&temp_clone_path, &o.0, &n.0).execute();
                     let project_path = [&temp_clone_path, "/", &n.0].concat();
-                    self.apply(&project_path, &o.0, &n.0, cmd, branch)
-                },
+                    self.apply(&project_path, &o.0, &n.0, cmd, branch, message)
+                }
                 (_, _) => (),
             });
     }
 
-    fn apply(&self, path: &str, org: &str, name: &str, cmd: &str, branch: &str) {
+    fn apply(&self, path: &str, org: &str, name: &str, cmd: &str, branch: &str, message: &str) {
         println!("");
         println!("");
         println!("applying the command {} to {}", cmd, path);
@@ -77,42 +80,48 @@ impl ApplyCommand {
             .status()
             .expect("failed to execute process");
         if status.success() {
-            let files = ListChangedFilesCommand::new(path).execute().unwrap();
+            let files = ListChangedFilesCommand(path).execute().unwrap();
             if !files.is_empty() {
-                let (_, _, res) = self.get_latest_commit(org, name).unwrap();
-                let sha = res.unwrap();
-                self.create_branch(org, name, branch, sha.sha());
-                // println!("file: {:?}", GetFileCommand(&self.gh, org, name, &files[0]).execute().unwrap().2.unwrap().sha());
+                let (_, _, maybe_commit_sha) = self.get_latest_commit(org, name).unwrap();
+                self.create_branch(org, name, branch, maybe_commit_sha.unwrap().sha());
+                let (_, _, maybe_file_sha) = GetFileCommand(&self.gh, org, name, &files[0]).execute().unwrap();
+
+                let file_path = [path, "/", &files[0]].concat();
+                let file_content = crate::config::file::read(file_path).unwrap();
+                let file_content_base64 = base64::encode(file_content);
+                if (maybe_file_sha.is_some()) {
+                    // update file index
+                    let file_sha = maybe_file_sha.unwrap();
+                    let body = serde_json::json!({"content": file_content_base64, "sha": file_sha.sha(), "branch": branch, "message": message});
+                    crate::commands::repo::put::UpdateFileCmd(&self.gh, org, name, &files[0], &body).execute();
+                } else {
+                    // create new file index
+                    let body = serde_json::json!({"content": file_content_base64, "branch": branch, "message": message});
+                    crate::commands::repo::put::UpdateFileCmd(&self.gh, org, name, path, &body).execute();
+                }
             }
         }
     }
 
-    fn get_latest_commit(&self,  org: &str, name: &str) -> Result<HttpResponse<Sha>> {
+    fn get_latest_commit(&self, org: &str, name: &str) -> Result<HttpResponse<Sha>> {
         GetLatestCommitCmd(&self.gh, org, name, "heads/master").execute()
     }
 
-    fn create_branch(&self,  org: &str, name: &str, branch: &str, sha: &str) {
+    fn create_branch(&self, org: &str, name: &str, branch: &str, sha: &str) {
         let a_ref = format!("refs/heads/{}", branch);
         let body = serde_json::json!({"ref": a_ref, "sha": sha});
-        println!("create branch: {:?}", CreateBranchCmd(&self.gh, org, name, &body).execute().unwrap());
+        println!(
+            "create branch: {:?}",
+            CreateBranchCmd(&self.gh, org, name, &body)
+                .execute()
+                .unwrap()
+        );
     }
-
-    fn commit_branch() {}
 
     fn create_pr() {}
 }
 
-struct ListChangedFilesCommand<'a> {
-    path: &'a str,
-}
-
-impl<'a> ListChangedFilesCommand<'a> {
-    pub fn new(path: &'a str) -> Self {
-        Self {
-            path: path,
-        }
-    }
-}
+struct ListChangedFilesCommand<'a>(pub &'a str);
 
 /// Create a vector of changed files.
 ///
@@ -120,14 +129,17 @@ impl<'a> ListChangedFilesCommand<'a> {
 impl<'a> Command<Vec<String>> for ListChangedFilesCommand<'a> {
     fn execute(&self) -> Result<Vec<String>> {
         let changes = std::process::Command::new("sh")
-            .current_dir(self.path)
+            .current_dir(self.0)
             .arg("-c")
             .arg("git status --porcelain --untracked-files")
             .output()
             .ok()
             .expect("failed to execute process");
         let a_vec = changes.stdout.to_owned();
-        let sort: Vec<_> = a_vec.split(|i| *i == 10).filter(|line| !line.is_empty()).collect();
+        let sort: Vec<_> = a_vec
+            .split(|i| *i == 10)
+            .filter(|line| !line.is_empty())
+            .collect();
         let mut files: Vec<String> = Vec::with_capacity(sort.len());
         let re = regex::bytes::Regex::new(r"^(?: \x4d|\x3f\x3f) (.*)$").unwrap();
         for line in sort.iter() {
@@ -135,7 +147,7 @@ impl<'a> Command<Vec<String>> for ListChangedFilesCommand<'a> {
                 Some(m) => {
                     let file = std::str::from_utf8(&m[1]).unwrap();
                     files.push(file.to_owned());
-                },
+                }
                 _ => (),
             }
         }

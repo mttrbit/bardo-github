@@ -14,6 +14,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate toml;
 extern crate regex;
+extern crate base64;
 
 pub mod commands;
 pub mod display;

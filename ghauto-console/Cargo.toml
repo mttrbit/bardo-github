@@ -18,3 +18,4 @@ ghauto-client-v3 = { path = "../ghauto-client-v3", version = "0.0.1" }
 clap = "2.33.0"
 reqwest = { version = "0.10.4" }
 chrono = "0.4"
+base64 = "0.12.0"

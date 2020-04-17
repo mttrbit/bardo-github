@@ -36,6 +36,7 @@ impl Clone for Github {
 
 new_type!(GetQueryBuilder);
 new_type!(PostQueryBuilder);
+new_type!(PutQueryBuilder);
 new_type!(CustomQuery);
 exec!(CustomQuery);
 
@@ -98,6 +99,29 @@ impl Github {
 
         qb
     }
+
+    pub fn put<T>(&self, body: T) -> PutQueryBuilder
+    where
+        T: Serialize,
+    {
+        let mut qb: PutQueryBuilder = self.into();
+        if let Ok(mut qbr) = qb.request {
+            let serialized = serde_json::to_vec(&body);
+            match serialized {
+                Ok(json) => {
+                    let json_str: Vec<u8> = json.into();
+                    let body = reqwest::blocking::Body::from(json_str);
+                    *qbr.get_mut().body_mut() = Some(body);
+                    qb.request = Ok(qbr);
+                }
+                Err(_) => {
+                    qb.request = Err("Unable to serialize data to JSON".into());
+                }
+            }
+        }
+
+        qb
+    }
 }
 
 impl<'g> GetQueryBuilder<'g> {
@@ -135,6 +159,11 @@ impl<'g> PostQueryBuilder<'g> {
     func_client!(repos, crate::repos::post::Repos<'g>);
 }
 
+impl<'g> PutQueryBuilder<'g> {
+    func_client!(custom_endpoint, CustomQuery, endpoint_str);
+    func_client!(repos, crate::repos::put::Repos<'g>);
+}
+
 // exec!(Github);
 
 from!(
@@ -142,12 +171,16 @@ from!(
         => "GET"
     @PostQueryBuilder
         => "POST"
+    @PutQueryBuilder
+        => "PUT"
 );
 
 from!(
     @GetQueryBuilder
         => CustomQuery
     @PostQueryBuilder
+        => CustomQuery
+    @PutQueryBuilder
         => CustomQuery
 );
 
