@@ -1,8 +1,10 @@
 use crate::cmd::CommandExecutor;
 use crate::cmd::{Command, HttpResponse};
 use crate::commands::repo::get::{GetLatestCommitCmd, Sha};
+use crate::commands::repo::post::{
+    AddAssigneesToPrCommand, AddReviewersToPrCommand, CreatePrCommand, CreatePrResponse,
+};
 use crate::commands::repo::post::{CreateBranchCmd, CreateBranchResponse};
-use crate::commands::repo::post::{CreatePrCommand, CreatePrResponse, UpdatePrCommand};
 use client::client::{Executor, Github, Result};
 use config::context::BardoContext;
 
@@ -15,7 +17,9 @@ pub struct ApplyCommand<'a> {
     branch: &'a str,
     message: &'a str,
     comment: &'a str,
-    reviewers: &'a Option<Vec<String>>,
+    assignees: &'a Option<Vec<&'a str>>,
+    reviewers: &'a Option<Vec<&'a str>>,
+    team_reviewers: &'a Option<Vec<&'a str>>,
 }
 
 impl<'a> ApplyCommand<'a> {
@@ -28,7 +32,9 @@ impl<'a> ApplyCommand<'a> {
         branch: &'a str,
         message: &'a str,
         comment: &'a str,
-        reviewers: &'a Option<Vec<String>>,
+        assignees: &'a Option<Vec<&'a str>>,
+        reviewers: &'a Option<Vec<&'a str>>,
+        team_reviewers: &'a Option<Vec<&'a str>>,
     ) -> Self {
         Self {
             gh: gh,
@@ -39,7 +45,9 @@ impl<'a> ApplyCommand<'a> {
             branch: branch,
             message: message,
             comment: comment,
+            assignees: assignees,
             reviewers: reviewers,
+            team_reviewers: team_reviewers,
         }
     }
 
@@ -76,9 +84,43 @@ impl<'a> ApplyCommand<'a> {
         CreatePrCommand(&self.gh, &self.org, &self.name, &body).execute()
     }
 
-    fn update_pr(&self, number: &i32) -> Result<HttpResponse<serde_json::Value>> {
-        let body = serde_json::json!({"assigness": self.reviewers});
-        UpdatePrCommand(&self.gh, &self.org, &self.name, number, &body).execute()
+    fn add_assignees_to_pr(&self, number: &i32) {
+        if let Some(assignees) = self.assignees {
+            let body = serde_json::json!({ "assignees": assignees });
+
+            if let Ok((_, status_code, Some(res))) =
+                AddAssigneesToPrCommand(&self.gh, &self.org, &self.name, number, &body).execute()
+            {
+                if !status_code.is_success() {
+                    let err_message: &str = &res.get("message").unwrap().as_str().unwrap();
+                    println!("Could not add assignees to PR #{}: {}", number, err_message);
+                }
+            }
+        }
+    }
+
+    fn add_reviewers_to_pr(&self, number: &i32) {
+        let maybe_body = match Some((self.reviewers, self.team_reviewers)) {
+            Some((Some(r), Some(tr))) => Some(
+                serde_json::json!({"reviewers": self.reviewers, "team_reviewers": self.team_reviewers}),
+            ),
+            Some((Some(r), None)) => Some(serde_json::json!({"reviewers": self.reviewers})),
+            Some((None, Some(tr))) => {
+                Some(serde_json::json!({"team_reviewers": self.team_reviewers}))
+            }
+            Some((None, None)) | None => None,
+        };
+
+        if let Some(body) = maybe_body {
+            if let Ok((_, status_code, Some(res))) =
+                AddReviewersToPrCommand(&self.gh, &self.org, &self.name, number, &body).execute()
+            {
+                if !status_code.is_success() {
+                    let err_message: &str = &res.get("message").unwrap().as_str().unwrap();
+                    println!("Could not add reviewers to PR #{}: {}", number, err_message);
+                }
+            }
+        }
     }
 }
 
@@ -116,10 +158,10 @@ impl<'a> Command<()> for ApplyCommand<'a> {
 
                 let branch_response = maybe_branch.unwrap();
                 let (_, _, maybe_pr) = self.create_pr(branch_response.reference()).unwrap();
-
                 let pr = maybe_pr.unwrap();
                 let pr_number = pr.number();
-                self.update_pr(pr_number);
+                self.add_reviewers_to_pr(pr_number);
+                self.add_assignees_to_pr(pr_number);
             }
         }
 
@@ -205,7 +247,9 @@ impl<'a> CommandExecutor for ApplyCommandExecutor {
         let branch = crate::utils::pick_branch(args).unwrap();
         let message = crate::utils::pick_message(args).unwrap();
         let comment = crate::utils::pick_comment(args).unwrap();
+        let assignees = crate::utils::pick_assignees(args);
         let reviewers = crate::utils::pick_reviewers(args);
+        let team_reviewers = crate::utils::pick_team_reviewers(args);
 
         let temp_clone_path = format!("{}/.temp", path);
         repositories
@@ -224,8 +268,11 @@ impl<'a> CommandExecutor for ApplyCommandExecutor {
                         branch,
                         message,
                         comment,
-                        &reviewers
-                    ).execute();
+                        &assignees,
+                        &reviewers,
+                        &team_reviewers,
+                    )
+                    .execute();
                 }
                 (_, _) => (),
             });

@@ -61,9 +61,9 @@ impl<'a> Command<HttpResponse<CreatePrResponse>> for CreatePrCommand<'a> {
     }
 }
 
-pub struct UpdatePrCommand<'a>(pub &'a Github, pub &'a str, pub &'a str, pub &'a i32, pub &'a serde_json::Value);
+pub struct AddAssigneesToPrCommand<'a>(pub &'a Github, pub &'a str, pub &'a str, pub &'a i32, pub &'a serde_json::Value);
 
-impl<'a> Command<HttpResponse<serde_json::Value>> for UpdatePrCommand<'a> {
+impl<'a> Command<HttpResponse<serde_json::Value>> for AddAssigneesToPrCommand<'a> {
     fn execute(&self) -> Result<HttpResponse<serde_json::Value>> {
         let result = self
             .0
@@ -71,10 +71,28 @@ impl<'a> Command<HttpResponse<serde_json::Value>> for UpdatePrCommand<'a> {
             .repos()
             .owner(self.1)
             .repo(self.2)
-            .issues(&format!("{}", self.3))
+            .issues()
+            .issues_number(&format!("{}", self.3))
             .assignees()
             .execute::<serde_json::Value>();
+        result
+    }
+}
 
+pub struct AddReviewersToPrCommand<'a>(pub &'a Github, pub &'a str, pub &'a str, pub &'a i32, pub &'a serde_json::Value);
+
+impl<'a> Command<HttpResponse<serde_json::Value>> for AddReviewersToPrCommand<'a> {
+    fn execute(&self) -> Result<HttpResponse<serde_json::Value>> {
+        let result = self
+            .0
+            .post(self.4)
+            .repos()
+            .owner(self.1)
+            .repo(self.2)
+            .pulls()
+            .pulls_number(&format!("{}", self.3))
+            .requested_reviewers()
+            .execute::<serde_json::Value>();
         result
     }
 }

@@ -104,7 +104,9 @@ pub fn start() {
                (@arg BRANCH: -b --branch +takes_value +required "the name of the branch to which the change is committed.")
                (@arg MESSAGE: -m --message +takes_value +required "the commit message to use")
                (@arg COMMENT: -c --comment +takes_value +required "the comment to use for the new pull request")
+               (@arg ASSIGNEES: -a --assignees +takes_value "set assignee(s) for the pull request")
                (@arg REVIEWERS: --reviewers +takes_value "the reviewer(s) to assign to the pull request")
+               (@arg TEAM_REVIEWERS: --team_reviewers +takes_value "the teame reviewer(s) to assign to the pull request")
                (@arg CMD: +required "the shell script to apply")
                (@arg REPO: -r --repo +takes_value "use a single project")
               )
@@ -153,7 +155,9 @@ pub fn start() {
         "BRANCH",
         "MESSAGE",
         "COMMENT",
+        "ASSIGNEES",
         "REVIEWERS",
+        "TEAM_REVIEWERS",
         "CMD",
     ];
 

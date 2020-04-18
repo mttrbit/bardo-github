@@ -73,16 +73,33 @@ pub fn pick_comment<'a>(args: &'a Vec<Vec<&'a str>>) -> Option<&'a str> {
     None
 }
 
-pub fn pick_reviewers<'a>(args: &'a Vec<Vec<&'a str>>) -> Option<Vec<String>> {
+pub fn pick_assignees<'a>(args: &'a Vec<Vec<&'a str>>) -> Option<Vec<&'a str>> {
+    for v in args {
+        if v[0] == "ASSIGNEES" {
+            let assignees: Vec<&str> = v[1].split(',').collect();
+            return Some(assignees);
+        }
+    }
+
+    None
+}
+
+pub fn pick_reviewers<'a>(args: &'a Vec<Vec<&'a str>>) -> Option<Vec<&'a str>> {
     for v in args {
         if v[0] == "REVIEWERS" {
-            let mut split: std::str::Split<&str> = v[1].split("/");
-            let mut reviewers = Vec::new();
-            for r in split.next() {
-                reviewers.push(r.to_string())
-            }
-
+            let reviewers: Vec<&str> = v[1].split(',').collect();
             return Some(reviewers);
+        }
+    }
+
+    None
+}
+
+pub fn pick_team_reviewers<'a>(args: &'a Vec<Vec<&'a str>>) -> Option<Vec<&'a str>> {
+    for v in args {
+        if v[0] == "TEAM_REVIEWERS" {
+            let team_reviewers: Vec<&str> = v[1].split(',').collect();
+            return Some(team_reviewers);
         }
     }
 
