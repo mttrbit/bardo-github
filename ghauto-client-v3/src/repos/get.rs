@@ -2,6 +2,7 @@ imports!();
 use crate::client::GetQueryBuilder;
 
 new_type!(
+    Assignees
     Commits
     Contents
     Issues
@@ -32,6 +33,7 @@ from!(
     @Issues
         ?> IssuesPage = "page"
     @IssuesNumber
+        -> Assignees = "assignees"
     @Labels
         => LabelsName
     @GetQueryBuilder
@@ -59,6 +61,8 @@ from!(
 );
 
 impl_macro!(
+    @Assignees
+        |
     @Commits
         |
         |=> reference -> Reference = ref_str
@@ -69,6 +73,9 @@ impl_macro!(
         |
         |=> number -> IssuesNumber = issue_number
         |?> page -> IssuesPage = page
+    @IssuesNumber
+        |
+        |=> assignees -> Assignees = assignees
     @Labels
         |
         |=> labelname -> LabelsName = labelname
@@ -93,6 +100,7 @@ impl_macro!(
         |
 );
 
+exec!(Assignees);
 exec!(Issues);
 exec!(IssuesPage);
 exec!(IssuesState);

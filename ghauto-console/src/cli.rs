@@ -7,7 +7,7 @@ use crate::commands::issues::get::GetIssuesCommandExecutor;
 use crate::commands::labels::get::GetLabelsCommand;
 use crate::commands::pulls::get::GetPullsCommand;
 use crate::commands::repo::clone::CloneRepoCommandExecutor;
-use crate::commands::repo::apply::ApplyCommand;
+use crate::commands::repo::apply::ApplyCommandExecutor;
 use crate::commands::users::Command;
 use crate::cmd::CommandExecutor;
 
@@ -187,7 +187,7 @@ pub fn start() {
                 }
                 ("apply", Some(apply_matches)) => {
                     let args = get_args(apply_matches, &all_args);
-                    ApplyCommand::new(context, gh).run(&args);
+                    ApplyCommandExecutor::new(gh, context).execute(&args);
                 }
                 _ => unreachable!(),
             },

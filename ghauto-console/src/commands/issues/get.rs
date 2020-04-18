@@ -120,7 +120,7 @@ impl<'a> CommandExecutor for GetIssuesCommandExecutor {
         let profile = self.context.profile();
         let section = &self.context.config().get_profiles()[profile];
         let repositories = section.repositories();
-        let print_all = crate::utils::pick_all(args);
+        let print_all = crate::utils::print_all(args);
         let maybe_repo = crate::utils::pick_repo(args);
 
         repositories

@@ -40,6 +40,12 @@ pub struct CreatePrResponse {
     url: String,
 }
 
+impl CreatePrResponse {
+    pub fn number(&self) -> &i32 {
+        &self.number
+    }
+}
+
 impl<'a> Command<HttpResponse<CreatePrResponse>> for CreatePrCommand<'a> {
     fn execute(&self) -> Result<HttpResponse<CreatePrResponse>> {
         let result = self
@@ -50,6 +56,24 @@ impl<'a> Command<HttpResponse<CreatePrResponse>> for CreatePrCommand<'a> {
             .repo(self.2)
             .pulls()
             .execute::<CreatePrResponse>();
+
+        result
+    }
+}
+
+pub struct UpdatePrCommand<'a>(pub &'a Github, pub &'a str, pub &'a str, pub &'a i32, pub &'a serde_json::Value);
+
+impl<'a> Command<HttpResponse<serde_json::Value>> for UpdatePrCommand<'a> {
+    fn execute(&self) -> Result<HttpResponse<serde_json::Value>> {
+        let result = self
+            .0
+            .post(self.4)
+            .repos()
+            .owner(self.1)
+            .repo(self.2)
+            .issues(&format!("{}", self.3))
+            .assignees()
+            .execute::<serde_json::Value>();
 
         result
     }
